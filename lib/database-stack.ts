@@ -36,6 +36,7 @@ export class DatabaseStack extends cdk.Stack {
 			vpc: props.vpc,
 			securityGroup: props.securityGroup,
 			port: 27017,
+			deletionProtection: true,
 		});
 
 		this.clusterEndpoint = this.cluster.clusterEndpoint.hostname;
