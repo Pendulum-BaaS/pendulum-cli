@@ -2,6 +2,7 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 import { spawn } from "child_process";
 import ora from "ora";
+import { resolve } from "path";
 
 export async function InitCommand() {
 	console.log(chalk.blue("⏰ Initializing new Pendulum project..."));
@@ -31,6 +32,7 @@ export async function InitCommand() {
 
 	try {
 		await addPendulumBackend(projectPath);
+		await installPendulumDependencies(projectPath);
 
 		console.log(chalk.green("\n Pendulum backend setup complete!"));
 		console.log(chalk.blue("Next steps:"));
@@ -63,6 +65,21 @@ async function addPendulumBackend(projectPath: string) {
 		spinner.succeed("Pendulum backend cloned");
 	} catch (error) {
 		spinner.fail("Failed to clone Pendulum backend");
+		throw error;
+	}
+}
+
+async function installPendulumDependencies(projectPath: string) {
+	const spinner = ora("Installing Pendulum dependencies...").start();
+
+	try {
+		await runCommand("npm", ["install"], {
+			cwd: resolve(projectPath, "pendulum"),
+		});
+
+		spinner.succeed("Pendulum dependencies installed");
+	} catch (error) {
+		spinner.fail("Failed to install Pendulum dependencies");
 		throw error;
 	}
 }
