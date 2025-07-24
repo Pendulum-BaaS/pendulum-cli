@@ -11,36 +11,36 @@ dotenv.config();
 const app = new cdk.App();
 
 const environment = {
-	account: process.env.CDK_DEFAULT_ACCOUNT,
-	region: process.env.DEFAULT_REGION || "us-east-1",
+  account: process.env.CDK_DEFAULT_ACCOUNT,
+  region: process.env.DEFAULT_REGION || "us-east-1",
 };
 
 const networkStack = new NetworkStack(app, "BaaS-NetworkStack", {
-	env: environment,
+  env: environment,
 });
 
 const securityStack = new SecurityStack(app, "BaaS-SecurityStack", {
-	vpc: networkStack.vpc,
-	env: environment,
+  vpc: networkStack.vpc,
+  env: environment,
 });
 
 const databaseStack = new DatabaseStack(app, "BaaS-DatabaseStack", {
-	vpc: networkStack.vpc,
-	securityGroup: securityStack.dbSecurityGroup,
-	env: environment,
+  vpc: networkStack.vpc,
+  securityGroup: securityStack.dbSecurityGroup,
+  env: environment,
 });
 
 const applicationStack = new ApplicationStack(app, "BaaS-ApplicationStack", {
-	vpc: networkStack.vpc,
-	ecsSecurityGroup: securityStack.ecsSecurityGroup,
-	albSecurityGroup: securityStack.albSecurityGroup,
-	databaseEndpoint: databaseStack.clusterEndpoint,
-	containerEnvironment: {
-		DB_NAME: process.env.DB_NAME || "test",
-		PORT: process.env.PORT || "3000",
-	},
-	containerRegistryURI: process.env.CONTAINER_URI as string,
-	env: environment,
+  vpc: networkStack.vpc,
+  ecsSecurityGroup: securityStack.ecsSecurityGroup,
+  albSecurityGroup: securityStack.albSecurityGroup,
+  databaseEndpoint: databaseStack.clusterEndpoint,
+  containerEnvironment: {
+    DB_NAME: process.env.DB_NAME || "test",
+    PORT: process.env.PORT || "3000",
+  },
+  containerRegistryURI: process.env.CONTAINER_URI as string,
+  env: environment,
 });
 
 securityStack.addDependency(networkStack);
