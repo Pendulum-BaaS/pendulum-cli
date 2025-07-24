@@ -3,6 +3,7 @@ import inquirer from "inquirer";
 import { spawn } from "child_process";
 import ora from "ora";
 import { resolve } from "path";
+import { writeFile } from "fs/promises";
 
 export async function InitCommand() {
 	console.log(chalk.blue("⏰ Initializing new Pendulum project..."));
@@ -33,6 +34,7 @@ export async function InitCommand() {
 	try {
 		await addPendulumBackend(projectPath);
 		await installPendulumDependencies(projectPath);
+		await createRootPackageJson(projectPath);
 
 		console.log(chalk.green("\n Pendulum backend setup complete!"));
 		console.log(chalk.blue("Next steps:"));
@@ -82,6 +84,25 @@ async function installPendulumDependencies(projectPath: string) {
 		spinner.fail("Failed to install Pendulum dependencies");
 		throw error;
 	}
+}
+
+async function createRootPackageJson(projectPath: string) {
+	const rootPackageJson = {
+		name: "pendulum-project",
+		version: "0.0.0",
+		private: true,
+		scripts: {
+			dev: "pendulum dev",
+			"backend:start": "cd pendulum && docker compose up",
+			"backend:stop": "cd pendulum && docker compose down",
+		},
+		description: "A fullstack project with a Pendulum backend",
+	};
+
+	await writeFile(
+		resolve(projectPath, "package.json"),
+		JSON.stringify(rootPackageJson, null, 2),
+	);
 }
 
 function runCommand(
