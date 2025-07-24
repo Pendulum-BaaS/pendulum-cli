@@ -1,62 +1,89 @@
 import chalk from "chalk";
 import inquirer from "inquirer";
-import { writeFile, mkdir } from "fs/promises";
-import { resolve } from "path";
+import { spawn } from "child_process";
+import ora from "ora";
 
-interface InitOptions {
-	name?: string;
-}
-
-export async function InitCommand(options: InitOptions) {
+export async function InitCommand() {
 	console.log(chalk.blue("⏰ Initializing new Pendulum project..."));
 
-	const answers = await inquirer.prompt([
+	const { proceed } = await inquirer.prompt([
 		{
-			type: "input",
-			name: "projectName",
-			message: "Project name:",
-			default: options.name,
-		},
-		{
-			type: "list",
-			name: "template",
-			message: "Choose a template:",
-			choices: [
-				{ name: "React + JavaScript", value: "react-js" },
-				{ name: "React + TypeScript", value: "react-ts" },
-				{ name: "Vanilla JavaScript", value: "vanilla" },
-			],
+			type: "confirm",
+			name: "proceed",
+			message:
+				"This will create a 'pendulum' directory with the backend code. Wish to continue?",
+			default: true,
 		},
 	]);
 
+	if (!proceed) {
+		console.log(chalk.yellow("Setup cancelled."));
+		return;
+	}
+
+	const projectPath = process.cwd();
+
+	/*
+	1. Copy pendulum core backend to ./pendulum dir
+	2. Install backend dependencies
+	3. Create package.json file in cwd with pendulum scripts
+	*/
+
 	try {
-		await mkdir(answers.projectName, { recursive: true });
+		await addPendulumBackend(projectPath);
 
-		const packageJson = {
-			name: answers.projectName,
-			version: "1.0.0",
-			// sets scripts to run pendulum commands
-			scripts: {
-				dev: "pendulum dev",
-				deploy: "pendulum deploy",
-			},
-			dependencies: {
-				"@pendulum/sdk": "^1.0.0",
-			},
-		};
-
-		await writeFile(
-			resolve(answers.projectName, "package.json"),
-			JSON.stringify(packageJson, null, 2),
-		);
-
-		console.log(chalk.green(`✅ Created ${answers.projectName}`));
+		console.log(chalk.green("\n Pendulum backend setup complete!"));
 		console.log(chalk.blue("Next steps:"));
-		console.log(`  cd ${answers.projectName}`);
-		console.log("  npm install");
-		console.log("  npm run dev");
+		console.log("    pendulum dev           # start pendulum backend\n");
+		console.log(chalk.blue("Development backend will be available at:"));
+		console.log("   🧑‍💻 apiUrl: http://localhost:3000");
+		console.log("   🔁 eventsUrl: http://localhost:8080/events\n");
+		console.log(
+			chalk.gray("Initialize your frontend however you like, then use:"),
+		);
+		console.log(chalk.gray("    cd frontend-dir && npm install @pendulum/sdk"));
 	} catch (error) {
-		console.error(chalk.red("Failed to create project:"), error);
+		console.error(chalk.red("Failed to initialize project:"), error);
 		process.exit(1);
 	}
+}
+
+async function addPendulumBackend(projectPath: string) {
+	const spinner = ora("Cloning Pendulum backend from GitHub...").start();
+
+	try {
+		await runCommand(
+			"git",
+			["clone", "https://github.com/Pendulum-BaaS/pendulum.git"],
+			{
+				cwd: projectPath,
+			},
+		);
+
+		spinner.succeed("Pendulum backend cloned");
+	} catch (error) {
+		spinner.fail("Failed to clone Pendulum backend");
+		throw error;
+	}
+}
+
+function runCommand(
+	command: string,
+	args: string[],
+	options: any = {},
+): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const proc = spawn(command, args, {
+			stdio: "inherit",
+			...options,
+		});
+
+		proc.on("close", (code) => {
+			code === 0
+				? resolve()
+				: reject(new Error(`Command failed with exit code ${code}`));
+		});
+
+		proc.on("error", reject);
+	});
 }

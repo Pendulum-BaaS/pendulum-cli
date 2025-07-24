@@ -1,17 +1,21 @@
 {
-	"name": "baas-cli",
-	"version": "0.1.0",
+	"name": "@pendulum/cli",
+	"version": "1.0.0",
+	"main": "dist/index.js",
 	"bin": {
-		"baas-cli": "bin/baas-cli.js"
+		"pendulum": "dist/index.js"
 	},
 	"scripts": {
 		"build": "tsc",
-		"watch": "tsc -w",
+		"dev": "tsc --watch",
 		"test": "jest",
 		"cdk": "cdk",
 		"deploy": "cdk deploy --all",
 		"destroy": "cdk destroy --all"
 	},
+	"files": [
+		"dist"
+	],
 	"devDependencies": {
 		"@types/jest": "^29.5.14",
 		"@types/node": "22.7.9",
@@ -27,6 +31,7 @@
 		"commander": "^14.0.0",
 		"constructs": "^10.0.0",
 		"dotenv": "^17.2.0",
-		"inquirer": "^12.8.2"
+		"inquirer": "^12.8.2",
+		"ora": "^5.4.1"
 	}
 }

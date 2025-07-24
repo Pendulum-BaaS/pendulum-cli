@@ -12,11 +12,6 @@ program
 program
 	.command("init")
 	.description("Initialize a new Pendulum project")
-	.option(
-		"-n, --name <string>",
-		"name for your newly initializes Pendulum project",
-		"my-pendulum-app",
-	)
 	.action(InitCommand);
 
 program.parse();
