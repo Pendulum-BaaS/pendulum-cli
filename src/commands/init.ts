@@ -1,9 +1,9 @@
 import chalk from "chalk";
 import inquirer from "inquirer";
-import { spawn } from "child_process";
 import ora from "ora";
 import { resolve } from "path";
 import { writeFile } from "fs/promises";
+import { runCommand } from "../utils/runCommand";
 
 export async function InitCommand() {
 	console.log(chalk.blue("⏰ Initializing new Pendulum project..."));
@@ -103,25 +103,4 @@ async function createRootPackageJson(projectPath: string) {
 		resolve(projectPath, "package.json"),
 		JSON.stringify(rootPackageJson, null, 2),
 	);
-}
-
-function runCommand(
-	command: string,
-	args: string[],
-	options: any = {},
-): Promise<void> {
-	return new Promise((resolve, reject) => {
-		const proc = spawn(command, args, {
-			stdio: "inherit",
-			...options,
-		});
-
-		proc.on("close", (code) => {
-			code === 0
-				? resolve()
-				: reject(new Error(`Command failed with exit code ${code}`));
-		});
-
-		proc.on("error", reject);
-	});
 }
