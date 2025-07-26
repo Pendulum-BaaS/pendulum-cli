@@ -15,26 +15,27 @@ const environment = {
   region: process.env.DEFAULT_REGION || "us-east-1",
 };
 
-const networkStack = new NetworkStack(app, "BaaS-NetworkStack", {
+const networkStack = new NetworkStack(app, "Pendulum-NetworkStack", {
   env: environment,
 });
 
-const securityStack = new SecurityStack(app, "BaaS-SecurityStack", {
+const securityStack = new SecurityStack(app, "Pendulum-SecurityStack", {
   vpc: networkStack.vpc,
   env: environment,
 });
 
-const databaseStack = new DatabaseStack(app, "BaaS-DatabaseStack", {
+const databaseStack = new DatabaseStack(app, "Pendulum-DatabaseStack", {
   vpc: networkStack.vpc,
   securityGroup: securityStack.dbSecurityGroup,
   env: environment,
 });
 
-const applicationStack = new ApplicationStack(app, "BaaS-ApplicationStack", {
+const applicationStack = new ApplicationStack(app, "Pendulum-ApplicationStack", {
   vpc: networkStack.vpc,
   ecsSecurityGroup: securityStack.ecsSecurityGroup,
   albSecurityGroup: securityStack.albSecurityGroup,
   databaseEndpoint: databaseStack.clusterEndpoint,
+  databaseSecret: databaseStack.secret,
   containerEnvironment: {
     DB_NAME: process.env.DB_NAME || "test",
     PORT: process.env.PORT || "3000",
