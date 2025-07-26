@@ -5,9 +5,6 @@ import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as secretsManager from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 interface ApplicationStackProps extends cdk.StackProps {
   vpc: ec2.Vpc;
