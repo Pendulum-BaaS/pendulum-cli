@@ -2,6 +2,8 @@ import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as secretsManager from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import dotenv from "dotenv";
 
@@ -12,6 +14,7 @@ interface ApplicationStackProps extends cdk.StackProps {
   ecsSecurityGroup: ec2.SecurityGroup;
   albSecurityGroup: ec2.SecurityGroup;
   databaseEndpoint: string;
+  databaseSecret: secretsManager.Secret;
   containerEnvironment: Record<string, string>;
   containerRegistryURI: string;
 }
@@ -24,14 +27,7 @@ export class ApplicationStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ApplicationStackProps) {
     super(scope, id, props);
 
-    const MONGO_URL =
-      `mongodb://${process.env.DB_USER}:${process.env.DB_PW}@` +
-      `${props.databaseEndpoint}:27017/` +
-      `${process.env.DB_NAME}?tls=true&tlsCAFile=/tmp/global-bundle.pem&` +
-      `replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false&` +
-      `authMechanism=SCRAM-SHA-1`;
-
-    this.cluster = new ecs.Cluster(this, "BaaSCoreCluster", {
+    this.cluster = new ecs.Cluster(this, "PendulumCoreCluster", {
       vpc: props.vpc,
     });
 
@@ -41,12 +37,23 @@ export class ApplicationStack extends cdk.Stack {
       cpu: 256, // default
     });
 
+    // Grant the task permission to read from Secrets Manager
+    taskDefinition.addToTaskRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["secretsManager:GetSecretValue"],
+      resources: [props.databaseSecret.secretArn],
+    }));
+
     // add container
-    const container = taskDefinition.addContainer("BaaSContainer", {
+    const container = taskDefinition.addContainer("PendulumContainer", {
       image: ecs.ContainerImage.fromRegistry(props.containerRegistryURI),
-      environment: { ...props.containerEnvironment, MONGO_URL },
+      environment: {
+        ...props.containerEnvironment,
+        DATABASE_ENDPOINT: props.databaseEndpoint,
+        DATABASE_SECRET_ARN: props.databaseSecret.secretArn,
+      },
       logging: ecs.LogDrivers.awsLogs({
-        streamPrefix: "baas-container",
+        streamPrefix: "pendulum-container",
       }),
     });
 
