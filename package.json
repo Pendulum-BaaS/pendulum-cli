@@ -6,7 +6,8 @@
     "pendulum": "dist/index.js"
   },
   "scripts": {
-    "build": "rm -rf ./dist && tsc",
+    "build": "rm -rf ./dist && tsc && npm run make",
+    "make": "chmod +x ./dist/index.js",
     "dev": "tsc --watch",
     "test": "jest",
     "cdk": "cdk",
