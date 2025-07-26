@@ -16,19 +16,19 @@ export class SecurityStack extends cdk.Stack {
 
     this.albSecurityGroup = new ec2.SecurityGroup(this, "AlbSG", {
       vpc: props.vpc,
-      description: "",
+      description: "Security group for Application Load Balancer",
       allowAllOutbound: false,
     });
 
     this.ecsSecurityGroup = new ec2.SecurityGroup(this, "EcsSG", {
       vpc: props.vpc,
-      description: "",
+      description: "Security group for ECS tasks",
       allowAllOutbound: false,
     });
 
     this.dbSecurityGroup = new ec2.SecurityGroup(this, "DbSG", {
       vpc: props.vpc,
-      description: "",
+      description: "Security group for DocumentDB cluster",
       allowAllOutbound: false,
     });
 
@@ -65,7 +65,8 @@ export class SecurityStack extends cdk.Stack {
     this.ecsSecurityGroup.addEgressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.HTTPS,
-      "Allow outbound HTTPS traffic for pulling images from ECR",
+      "Allow outbound HTTPS traffic for pulling images from ECR and" +
+      "accessing AWS APIs",
     );
 
     // db rules
