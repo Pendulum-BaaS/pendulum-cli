@@ -41,6 +41,8 @@ const applicationStack = new ApplicationStack(app, "Pendulum-ApplicationStack", 
     PORT: process.env.PORT || "3000",
   },
   containerRegistryURI: process.env.CONTAINER_URI as string,
+  appImageTag: process.env.APP_IMAGE_TAG || "app-latest",
+  
   env: environment,
 });
 
