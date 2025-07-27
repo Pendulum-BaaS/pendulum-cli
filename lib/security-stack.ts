@@ -1,6 +1,6 @@
 import * as cdk from "aws-cdk-lib";
-import { Construct } from "constructs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
+import { Construct } from "constructs";
 
 interface SecurityStackProps extends cdk.StackProps {
   vpc: ec2.Vpc;
@@ -67,6 +67,12 @@ export class SecurityStack extends cdk.Stack {
       ec2.Port.HTTPS,
       "Allow outbound HTTPS traffic for pulling images from ECR and" +
       "accessing AWS APIs",
+    );
+
+    this.ecsSecurityGroup.addEgressRule(
+      this.ecsSecurityGroup,
+      ec2.Port.tcp(8080),
+      "Allow ECS tasks to communicate with each other on port 8080",
     );
 
     // db rules
