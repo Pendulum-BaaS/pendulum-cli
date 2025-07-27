@@ -42,7 +42,7 @@ const applicationStack = new ApplicationStack(app, "Pendulum-ApplicationStack", 
   },
   containerRegistryURI: process.env.CONTAINER_URI as string,
   appImageTag: process.env.APP_IMAGE_TAG || "app-latest",
-  
+  eventsImageTag: process.env.EVENTS_IMAGE_TAG || "events-latest",
   env: environment,
 });
 
