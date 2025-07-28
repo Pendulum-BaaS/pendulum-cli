@@ -2,68 +2,125 @@ import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as secretsManager from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 interface ApplicationStackProps extends cdk.StackProps {
   vpc: ec2.Vpc;
   ecsSecurityGroup: ec2.SecurityGroup;
   albSecurityGroup: ec2.SecurityGroup;
   databaseEndpoint: string;
+  databaseSecret: secretsManager.Secret;
   containerEnvironment: Record<string, string>;
   containerRegistryURI: string;
+  appImageTag: string;
+  eventsImageTag: string;
 }
 
 export class ApplicationStack extends cdk.Stack {
   public readonly cluster: ecs.Cluster;
-  public readonly service: ecs.FargateService;
+  public readonly appService: ecs.FargateService;
+  public readonly eventsService: ecs.FargateService;
   public readonly loadBalancer: elbv2.ApplicationLoadBalancer;
 
   constructor(scope: Construct, id: string, props: ApplicationStackProps) {
     super(scope, id, props);
 
-    const MONGO_URL =
-      `mongodb://${process.env.DB_USER}:${process.env.DB_PW}@` +
-      `${props.databaseEndpoint}:27017/` +
-      `${process.env.DB_NAME}?tls=true&tlsCAFile=/tmp/global-bundle.pem&` +
-      `replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false&` +
-      `authMechanism=SCRAM-SHA-1`;
-
-    this.cluster = new ecs.Cluster(this, "BaaSCoreCluster", {
+    this.cluster = new ecs.Cluster(this, "PendulumCoreCluster", {
       vpc: props.vpc,
     });
 
-    // create task definition to attach container to
-    const taskDefinition = new ecs.FargateTaskDefinition(this, "TaskDef", {
+    // create app task definition to attach container to
+    const appTaskDef = new ecs.FargateTaskDefinition(this, "AppTaskDef", {
       memoryLimitMiB: 512, // default
       cpu: 256, // default
     });
 
-    // add container
-    const container = taskDefinition.addContainer("BaaSContainer", {
-      image: ecs.ContainerImage.fromRegistry(props.containerRegistryURI),
-      environment: { ...props.containerEnvironment, MONGO_URL },
+    // Grant the task permission to read from Secrets Manager
+    appTaskDef.addToTaskRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["secretsManager:GetSecretValue"],
+      resources: [props.databaseSecret.secretArn],
+    }));
+
+    // add app container
+    const appContainer = appTaskDef.addContainer("AppContainer", {
+      image: ecs.ContainerImage.fromRegistry(
+        `${props.containerRegistryURI}:${props.appImageTag}`
+      ),
+      environment: {
+        ...props.containerEnvironment,
+        DATABASE_ENDPOINT: props.databaseEndpoint,
+        SERVICE_TYPE: "app",
+        EVENTS_SERVICE_URL: "http://events:8080",
+      },
+      secrets: {
+        DB_USER: ecs.Secret.fromSecretsManager(
+          props.databaseSecret,
+          "username"
+        ),
+        DB_PW: ecs.Secret.fromSecretsManager(
+          props.databaseSecret,
+          "password"
+        ),
+      },
       logging: ecs.LogDrivers.awsLogs({
-        streamPrefix: "baas-container",
+        streamPrefix: "app-container",
       }),
     });
 
-    container.addPortMappings({
+    appContainer.addPortMappings({
       containerPort: 3000,
       protocol: ecs.Protocol.TCP,
     });
 
-    // create fargate service
-    this.service = new ecs.FargateService(this, "Service", {
+    const eventsTaskDef = new ecs.FargateTaskDefinition(this, "EventsTaskDef", {
+      memoryLimitMiB: 512, // default
+      cpu: 256, // default
+    });
+
+    // add events container
+    const eventsContainer = eventsTaskDef.addContainer("EventsContainer", {
+      image: ecs.ContainerImage.fromRegistry(
+        `${props.containerRegistryURI}:${props.eventsImageTag}`
+      ),
+      environment: {
+        ...props.containerEnvironment,
+        SERVICE_TYPE: "events",
+      },
+      logging: ecs.LogDrivers.awsLogs({
+        streamPrefix: "events-container",
+      }),
+    });
+
+    eventsContainer.addPortMappings({
+      containerPort: 8080,
+      protocol: ecs.Protocol.TCP,
+    });
+
+    // create app fargate service
+    this.appService = new ecs.FargateService(this, "AppService", {
       cluster: this.cluster,
-      taskDefinition,
+      taskDefinition: appTaskDef,
       desiredCount: 1, // default
       securityGroups: [props.ecsSecurityGroup],
       vpcSubnets: {
         subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
       },
+      serviceName: "app",
+    });
+
+    // create events fargate service
+    this.eventsService = new ecs.FargateService(this, "EventsService", {
+      cluster: this.cluster,
+      taskDefinition: eventsTaskDef,
+      desiredCount: 1, // default
+      securityGroups: [props.ecsSecurityGroup],
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
+      },
+      serviceName: "events",
     });
 
     // create ALB
@@ -89,7 +146,7 @@ export class ApplicationStack extends cdk.Stack {
     });
 
     // add targets to target group
-    this.service.attachToApplicationTargetGroup(targetGroup);
+    this.appService.attachToApplicationTargetGroup(targetGroup);
 
     // create Listener for load balancer to send traffic to target group
     this.loadBalancer.addListener("Listened", {
