@@ -52,9 +52,18 @@ export class ApplicationStack extends cdk.Stack {
       environment: {
         ...props.containerEnvironment,
         DATABASE_ENDPOINT: props.databaseEndpoint,
-        DATABASE_SECRET_ARN: props.databaseSecret.secretArn,
         SERVICE_TYPE: "app",
-        EVENTS_SERVICE_URL: "http://events:8080"
+        EVENTS_SERVICE_URL: "http://events:8080",
+      },
+      secrets: {
+        DB_USER: ecs.Secret.fromSecretsManager(
+          props.databaseSecret,
+          "username"
+        ),
+        DB_PW: ecs.Secret.fromSecretsManager(
+          props.databaseSecret,
+          "password"
+        ),
       },
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: "app-container",
@@ -83,6 +92,11 @@ export class ApplicationStack extends cdk.Stack {
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: "events-container",
       }),
+    });
+
+    eventsContainer.addPortMappings({
+      containerPort: 8080,
+      protocol: ecs.Protocol.TCP,
     });
 
     // create app fargate service
