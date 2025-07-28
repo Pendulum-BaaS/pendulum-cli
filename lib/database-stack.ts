@@ -24,10 +24,10 @@ export class DatabaseStack extends cdk.Stack {
       description: "Pendulum DocumentDB cluster credentials",
       generateSecretString: {
         secretStringTemplate: JSON.stringify({
-          username: process.env.DB_USER || "admin"
+          username: process.env.DB_USER || "mongouser"
         }),
         generateStringKey: "password",
-        excludeCharacters: '"@/\\',
+        excludeCharacters: '"@/\\:?#[]%&=+',
         passwordLength: 16,
       },
     });
