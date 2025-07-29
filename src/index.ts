@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import { InitCommand } from "./commands/init";
 import { DevCommand } from "./commands/dev";
+import { DeployCommand } from "./commands/deploy";
 
 const program = new Command();
 
@@ -19,5 +20,10 @@ program
   .command("dev")
   .description("Start your Pendulum backend for local development")
   .action(DevCommand);
+
+program
+  .command("deploy")
+  .description("Deploy Pendulum backend to AWS")
+  .action(DeployCommand);
 
 program.parse();
