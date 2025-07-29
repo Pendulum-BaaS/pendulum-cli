@@ -13,11 +13,11 @@ The `cdk.json` file tells the CDK Toolkit how to execute your app.
 * `npx cdk diff`    compare deployed stack with current state
 * `npx cdk synth`   emits the synthesized CloudFormation template
 
-## Pendulum CLI
+# Pendulum CLI
 
 This is a command-line interface for managing Pendulum BaaS projects.
 
-# Useful Commands
+## Useful Commands
 
 `pendulum init`
 
@@ -50,20 +50,20 @@ This command will:
 
 ## Prerequisites
 
-# For `pendulum init` and `pendulum dev`:
+## For `pendulum init` and `pendulum dev`:
 
 - Node.js (v18 or later)
 - Docker and Docker Compose
 - Git
 
-# For `pendulum deploy`:
+## For `pendulum deploy`:
 
 - All of the above, plus:
 - AWS CLI configured with appropriate credentials (`aws configure`)
 - Sufficient AWS permissions for CDK deployment
 - Docker (required for CDK asset building)
 
-# Usage
+## Usage
 
 ```bash
 # Initialize a new project
