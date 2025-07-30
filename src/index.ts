@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { InitCommand } from "./commands/init";
 import { DevCommand } from "./commands/dev";
 import { DeployCommand } from "./commands/deploy";
+import { DestroyCommand } from "./commands/destroy";
 
 const program = new Command();
 
@@ -25,5 +26,10 @@ program
   .command("deploy")
   .description("Deploy Pendulum backend to AWS")
   .action(DeployCommand);
+
+program
+  .command("destroy")
+  .description("Destroy Pendulum backend from AWS")
+  .action(DestroyCommand);
 
 program.parse();
