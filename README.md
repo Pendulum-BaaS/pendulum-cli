@@ -48,6 +48,18 @@ This command will:
 - Deploy the Pendulum infrastructure to AWS
 - Provide deployment details and next steps
 
+`pendulum destroy`
+
+Permanently destroy the Pendulum deployment from AWS.
+This command will:
+
+- Prompt for AWS account ID and region
+- Check if Pendulum stack exists
+- Display warnings about permanent data loss
+- Require confirmation by typing "DESTROY"
+- Remove all AWS infrastructure and resources
+- Stop all related billing charges
+
 ## Prerequisites
 
 ## For `pendulum init` and `pendulum dev`:
@@ -56,7 +68,7 @@ This command will:
 - Docker and Docker Compose
 - Git
 
-## For `pendulum deploy`:
+## For `pendulum deploy` and `pendulum destroy`:
 
 - All of the above, plus:
 - AWS CLI configured with appropriate credentials (`aws configure`)
@@ -74,9 +86,13 @@ pendulum dev
 
 # Deploy to AWS
 pendulum deploy
+
+# Destroy AWS deployment
+pendulum destroy
 ```
 
 ## AWS Deployment
+
 The `pendulum deploy` command uses AWS CDK to provision:
 
 - ECS Fargate cluster for containerized services
@@ -87,3 +103,9 @@ The `pendulum deploy` command uses AWS CDK to provision:
 - ECR repositories for container images
 
 Make sure you have the necessary AWS permissions for these services before deploying.
+
+## Important Notes
+
+- Data Loss Warning: The destroy command permanently deletes all data and resources. This action cannot be undone.
+- Billing: AWS resources created by deploy will incur charges. Use destroy to stop billing.
+- CDK Bootstrap: The destroy command preserves CDK bootstrap resources for future deployments.
