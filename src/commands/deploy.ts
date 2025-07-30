@@ -3,21 +3,7 @@ import inquirer from "inquirer";
 import ora from "ora";
 import { resolve } from "path";
 import { runCommand } from "../utils/runCommand";
-
-async function checkAWSConfiguration() {
-  const spinner = ora("Checking AWS configuration...").start();
-
-  try {
-    await runCommand("aws", ["sts", "get-caller-identity"], {
-      cwd: process.cwd(),
-    });
-
-    spinner.succeed("AWS credentials configured");
-  } catch (error) {
-    spinner.fail("AWS credentials not configured");
-    throw new Error("Run 'aws configure' to set up your AWS credentials");
-  }
-}
+import { checkAWSConfiguration } from "../utils/checkAWSConfiguration";
 
 async function installCDKDependencies(cliPath: string) {
   const spinner = ora("Intalling CDK dependencies...").start();
