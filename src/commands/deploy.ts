@@ -1,9 +1,10 @@
 import chalk from "chalk";
 import inquirer from "inquirer";
 import ora from "ora";
-import { resolve } from "path";
+import { resolve, existsSync } from "path";
 import { runCommand } from "../utils/runCommand";
 import { checkAWSConfiguration } from "../utils/checkAWSConfiguration";
+import { getAWSConfiguration } from "../utils/getAWSConfiguration";
 
 async function installCDKDependencies(cliPath: string) {
   const spinner = ora("Intalling CDK dependencies...").start();
@@ -44,15 +45,33 @@ async function bootstrapCDK(
   }
 }
 
-async function deployCDKStack(
+async function deployBackendStacks(
   cliPath: string,
   accountId: string,
   region: string,
 ) {
-  const spinner = ora("Deploying Pendulum stack to AWS...").start();
+  const spinner = ora("Deploying Pendulum backend stacks to AWS...").start();
+
+  const backendStacks = [
+    "Pendulum-NetworkStack",
+    "Pendulum-SecurityStack",
+    "Pendulum-DatabaseStack",
+    "Pendulum-ApplicationStack",
+  ];
 
   try {
-    await runCommand("npx", ["cdk", "deploy", "--require-approval", "never"], {
+    await runCommand(
+      "npx",
+      [
+        "cdk",
+        "deploy",
+        ...backendStacks,
+        "--require-approval",
+        "never",
+        "--outputs-file",
+        "backend-outputs.json"
+      ],
+      {
       cwd: cliPath,
       env: {
         ...process.env,
@@ -61,20 +80,102 @@ async function deployCDKStack(
       },
     });
 
-    spinner.succeed("Pendulum stacked deployed successfully");
+    spinner.succeed("Pendulum backend stacks deployed successfully");
   } catch (error) {
-    spinner.fail("Failed to deploy Pendulum stack");
+    spinner.fail("Failed to deploy Pendulum backend stacks");
     throw error;
   }
+}
+
+async function deployFrontendStack(
+  cliPath: string,
+  accountId: string,
+  region: string,
+  frontendConfig: any,
+) {
+  const spinner = ora("Deploying frontend stack to AWS...").start();
+
+  try {
+    await runCommand(
+      "npx",
+      [
+        "cdk",
+        "deploy",
+        "Pendulum-FrontendStack",
+        "--require-approval",
+        "never",
+        "--outputs-file",
+        "frontend-outputs.json",
+      ],
+    {
+      cwd: cliPath,
+      env: {
+        ...process.env,
+        CDK_DEFAULT_ACCOUNT: accountId,
+        CDK_DEFAULT_REGION: region,
+        PROJECT_NAME: frontendConfig.projectName,
+        FRONTEND_BUILD_PATH: frontendConfig.frontendBuildPath,
+      }
+    });
+
+    spinner.succeed("Frontend stack deployed successfully");
+  } catch (error) {
+    spinner.fail("Failed to deploy frontend stack");
+    throw error;
+  }
+}
+
+async function getFrontendConfigration() {
+  console.log(chalk.blue("\nFrontend Deployment Configuration"));
+  console.log(chalk.gray("Configure your frontend application deployment"));
+
+  const frontendConfig = await inquirer.prompt([
+    {
+      type: "input",
+      name: "projectName",
+      message: "Project name for your frontend:",
+      default: "my-pendulum-app",
+      validate: (input: string) => {
+        if (!input.trim()) {
+          return "project name is required";
+        } else if (!/^[a-z0-9-_]+$/i.test(input)) { // checks that input only contains alphanumeric characters, hyphens, and underscores
+          return "Project name can only contain letters, numbers, hyphens, " +
+            "and underscores";
+        } else {
+          return true;
+        }
+      },
+    },
+    {
+      type: "input",
+      name: "frontendBuildPath",
+      message: "Path to built frontend files (realtive to current directory):",
+      default: "./dist",
+      validate: (input: string) => {
+        const fullPath = resolve(process.cwd(), input);
+        if (!existsSync(fullPath)) {
+          return `Directory ${input} does not exist.`;
+        } else if (!existsSync(resolve(fullPath, "index.html"))) {
+          return `No index.html found in ${input}.`;
+        } else {
+          return true;
+        }
+      },
+    },
+  ]);
+
+  return frontendConfig;
 }
 
 /*
 `pendulum deploy`, when run from the root directory should do the following (happy path):
 1. Prompt user for AWS account ID and region
-2. Validate the inputs
-3. Set up AWS CDK environment variables
-4. Navigate to the CLI directory and run CDK deployment
-5. Display success message with deployment info
+2. Prompt for frontend configuration
+3. Validate the inputs
+4. Set up AWS CDK environment variables
+5. Navigate to the CLI directory and run CDK deployment for backend
+6. Deploy frontend stack
+7. Display success message with deployment info
 */
 
 export async function DeployCommand() {
@@ -107,82 +208,29 @@ export async function DeployCommand() {
     return;
   }
 
-  const { awsAccountId, awsRegion } = await inquirer.prompt([
-    {
-      type: "input",
-      name: "awsAccountId",
-      message: "Enter your AWS Account ID:",
-      validate: (input: string) => {
-        if (!input || input.trim().length === 0) {
-          return "AWS Account ID is required";
-        } else if (!/^\d{12}$/.test(input.trim())) { // checks for exactly 12 digits
-          return "AWS Account ID must be exactly 12 digits";
-        } else {
-          return true;
-        }
-      },
-    },
-    {
-      type: "list",
-      name: "awsRegion",
-      message: "Select your AWS region:",
-      choices: [
-        {
-          name: "US East (N. Virginia) - us-east-1",
-          value: "us-east-1",
-        },
-        {
-          name: "US East (Ohio) - us-east-2",
-          value: "us-east-2",
-        },
-        {
-          name: "US West (Oregon) - us-west-2",
-          value: "us-west-2",
-        },
-        {
-          name: "US West (N. California) - us-west-1",
-          value: "us-west-1",
-        },
-        {
-          name: "Europe (Ireland) - eu-west-1",
-          value: "eu-west-1",
-        },
-        {
-          name: "Europe (London) - eu-west-2",
-          value: "eu-west-2",
-        },
-        {
-          name: "Europe (Frankfurt) - eu-central-1",
-          value: "eu-central-1",
-        },
-        {
-          name: "Asia Pacific (Sydney) - ap-southeast-2",
-          value: "ap-southeast-2"
-        },
-        {
-          name: "Asia Pacific (Tokyo) - ap-northeast-1",
-          value: "ap-northeast-1",
-        },
-        {
-          name: "Asia Pacific (Singapore) - ap-southeast-1",
-          value: "ap-southeast-1",
-        },
-      ],
-      default: "us-east-1",
-    },
-  ]);
+  const { awsAccountId, awsRegion } = await getAWSConfiguration();
+  const frontendConfig = await getFrontendConfigration();
 
-  const { confirmDeployment: finalConfirm } = await inquirer.prompt([
+  const deploymentSummary = [
+    `Account: ${awsAccountId.trim()}`,
+    `Region: ${awsRegion}`,
+    `Backend: Pendulum BaaS (4 stacks)`,
+    `Frontend: ${frontendConfig.projectName}`,
+  ];
+
+  console.log(chalk.blue("\nDeployment Summary:"));
+  deploymentSummary.forEach(item => console.log(item));
+
+  const { confirmDeployment } = await inquirer.prompt([
     {
       type: "confirm",
       name: "confirmDeployment",
-      message: `Deploy to AWS Account ${awsAccountId.trim()} in region` +
-        `${awsRegion}?`,
+      message: "Proceed with deployment?",
       default: false,
     },
   ]);
 
-  if (!finalConfirm) {
+  if (!confirmDeployment) {
     console.log(chalk.yellow("Deployment cancelled."));
     return;
   }
@@ -191,17 +239,27 @@ export async function DeployCommand() {
     await checkAWSConfiguration();
     await installCDKDependencies(cliPath);
     await bootstrapCDK(cliPath, awsAccountId.trim(), awsRegion);
-    await deployCDKStack(cliPath, awsAccountId.trim(), awsRegion);
+    await deployBackendStacks(cliPath, awsAccountId.trim(), awsRegion);
+    await deployFrontendStack(
+      cliPath,
+      awsAccountId.trim(),
+      awsRegion,
+      frontendConfig
+    );
 
     console.log(chalk.green("\nPendulum successfully deployed to AWS!"));
     console.log(chalk.blue("Deployment Details:"));
     console.log(` Account: ${awsAccountId.trim()}`);
     console.log(` Region: ${awsRegion}`);
     console.log("");
+    console.log(chalk.blue("Access Your Deployment:"));
+    console.log(" Backend: Check CloudFormation outputs for ALB URL");
+    console.log(" Frontend: Check CloudFormation outputs for CloudFront URL");
+    console.log("");
     console.log(chalk.blue("Next Steps:"));
     console.log("1. Check AWS CloudFormation console for your stack outputs");
-    console.log("2. Update frontend SDK configuration with the new endpoints");
-    console.log("3. Your Pendulum backend is now running in production!");
+    console.log("2. Your frontend is live and connected to your backend!");
+    console.log("3. API calls to /api/* & /auth/* are automatically proxied");
     console.log("");
     console.log(chalk.gray("To update deployment, rerun 'pendulum deploy'"));
   } catch (error) {
@@ -214,6 +272,8 @@ export async function DeployCommand() {
       "- Ensure AWS CDK is installed globally: npm install -g aws-cdk"
     );
     console.log("- Ensure Docker is running (required for CDK deployment)");
+    console.log("- Verify your frontend build path is correct");
+    console.log("- Ensure your frontend project was built successfully");
     process.exit(1);
   }
 };
