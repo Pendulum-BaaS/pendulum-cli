@@ -4,6 +4,7 @@ import { NetworkStack } from "../lib/network-stack";
 import { DatabaseStack } from "../lib/database-stack";
 import { SecurityStack } from "../lib/security-stack";
 import { ApplicationStack } from "../lib/application-stack";
+import { UserFrontendStack } from "../lib/frontend-stack";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -46,6 +47,16 @@ const applicationStack = new ApplicationStack(app, "Pendulum-ApplicationStack", 
   env: environment,
 });
 
+const frontendStack = new UserFrontendStack(app, "Pendulum-FrontendStack", {
+  projectName: process.env.PROJECT_NAME || "pendulum-user-app",
+  frontendBuildPath: process.env.FRONTEND_BUILD_PATH || "./dist",
+  apiEndpoint: `https://${applicationStack.loadBalancer.loadBalancerDnsName}`,
+  // loadBalancer: applicationStack.loadBalancer,
+  // customDomainName: process.env.FRONTEND_DOMAIN_NAME,
+  env: environment,
+});
+
 securityStack.addDependency(networkStack);
 databaseStack.addDependency(securityStack);
 applicationStack.addDependency(databaseStack);
+frontendStack.addDependency(applicationStack);
