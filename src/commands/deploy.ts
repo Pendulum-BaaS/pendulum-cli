@@ -1,7 +1,8 @@
 import chalk from "chalk";
 import inquirer from "inquirer";
 import ora from "ora";
-import { resolve, existsSync } from "path";
+import { resolve } from "path";
+import { existsSync } from "fs";
 import { runCommand } from "../utils/runCommand";
 import { checkAWSConfiguration } from "../utils/checkAWSConfiguration";
 import { getAWSConfiguration } from "../utils/getAWSConfiguration";
