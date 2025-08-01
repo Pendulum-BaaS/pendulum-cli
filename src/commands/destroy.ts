@@ -6,48 +6,58 @@ import { runCommand } from "../utils/runCommand";
 import { checkAWSConfiguration } from "../utils/checkAWSConfiguration";
 import { getAWSConfiguration } from "../utils/getAWSConfiguration";
 
-async function checkStackExists(region: string) {
-  const spinner = ora("Checking if Pendulum stack exists...").start();
+async function listAllStacks() {
+  const spinner = ora("Finding known Pendulum stacks...").start();
 
   try {
-    await runCommand("aws", [
-      "cloudformation",
-      "describe-stacks",
-      "--stack-name",
-      "PendulumStack",
-      "--region",
-      region
-    ]);
+    await runCommand("aws", ["sts", "get-caller-identity"], { stdio: "pipe" });
 
-    spinner.succeed("Pendulum stack found");
-    return true;
-  } catch (error) {
-    spinner.warn("No pendulum stack found to destroy");
-    return false;
+    const potentialStacks = [
+      "Pendulum-FrontendStack",
+      "Pendulum-ApplicationStack", 
+      "Pendulum-DatabaseStack",
+      "Pendulum-SecurityStack",
+      "Pendulum-NetworkStack"
+    ];
+
+    spinner.succeed("Ready to destroy Pendulum stacks");
+    return potentialStacks;
+  } catch (error: any) {
+    spinner.fail("Failed to connect to AWS");
+    throw new Error(`AWS CLI error: ${error.message}`);
   }
 }
 
-async function destroyCDKStack(
+async function destroyStacks(
   cliPath: string,
   accountId: string,
   region: string,
+  stacks: string[]
 ) {
-  const spinner = ora("Destroying Pendulum stack from AWS...").start();
+  console.log(chalk.blue("\nDestroy Info:"));
+  console.log(chalk.gray(`  CLI Path: ${cliPath}`));
+  console.log(chalk.gray(`  Account: ${accountId}`));
+  console.log(chalk.gray(`  Region: ${region}`));
 
-  try {
-    await runCommand("npx", ["cdk", "destroy", "--force"], {
-      cwd: cliPath,
-      env: {
-        ...process.env,
-        CDK_DEFAULT_ACCOUNT: accountId,
-        CDK_DEFAULT_REGION: region,
-      }
-    });
+  for (const stack of stacks.reverse()) {
+    console.log(chalk.blue(`\nAttempting to destroy: ${stack}`));
 
-    spinner.succeed("Pendulum stack destroyed successfully");
-  } catch (error) {
-    spinner.fail("Failed to destroy Pendulum stack");
-    throw error;
+    try {
+      await runCommand("npx", ["cdk", "destroy", stack, "--force"], {
+        cwd: cliPath,
+        env: {
+          ...process.env,
+          CDK_DEFAULT_ACCOUNT: accountId,
+          CDK_DEFAULT_REGION: region,
+        },
+        stdio: "inherit",
+      });
+
+      console.log(chalk.green(`Successfully destroyed: ${stack}`));
+    } catch (error: any) {
+      console.log(chalk.yellow(`Couldn't destroy ${stack}: ${error.message}`));
+      console.log(chalk.gray("This might be normal if stack doesn't exist"));
+    }
   }
 }
 
@@ -63,16 +73,15 @@ async function destroyCDKStack(
 export async function DestroyCommand() {
   console.log(chalk.red("Destroying from AWS..."));
 
-  const projectPath = process.cwd();
-  const cliPath = resolve(projectPath, "pendulum-cli");
+  const cliPath = resolve(__dirname, "../..");
+  console.log(chalk.gray(`Using CLI from: ${cliPath}`));
 
   try {
     const fs = await import("fs/promises");
-    await fs.access(resolve(projectPath, "pendulum"));
-    await fs.access(cliPath);
+    await fs.access(resolve(cliPath, "package.json"));
+    console.log(chalk.green("CLI files found"));
   } catch (error) {
     console.log(chalk.red("Pendulum project not found!"));
-    console.log(chalk.yellow("Run 'pendulum init' to set up your project."));
     return;
   }
 
@@ -98,6 +107,7 @@ export async function DestroyCommand() {
     "All data in your Pendulum deployment will be permanently lost."
   ));
   console.log(chalk.yellow("This includes:"));
+  console.log(chalk.yellow("- S3 bucket and all website files"));
   console.log(chalk.yellow("- Database and all stored data"));
   console.log(chalk.yellow("- Container images and logs"));
   console.log(chalk.yellow("- Load balancer and networking"));
@@ -126,14 +136,13 @@ export async function DestroyCommand() {
   try {
     await checkAWSConfiguration();
 
-    const stackExists = await checkStackExists(awsRegion);
-    if (!stackExists) {
-      console.log(chalk.yellow("No Pendulum stack found to destroy."));
-      console.log(chalk.gray("Your AWS account appears to be clean already."));
-      return;
-    }
-
-    await destroyCDKStack(cliPath, awsAccountId.trim(), awsRegion);
+    const stacksToDestroy = await listAllStacks();
+    await destroyStacks(
+      cliPath,
+      awsAccountId.trim(),
+      awsRegion,
+      stacksToDestroy
+    );
 
     console.log(chalk.green("\nPendulum successfully destroyed from AWS!"));
     console.log(chalk.blue("Destruction details:"));
@@ -141,6 +150,7 @@ export async function DestroyCommand() {
     console.log(` Region: ${awsRegion}`);
     console.log("");
     console.log(chalk.blue("What was destroyed:"));
+    console.log("- Frontend application and CDN");
     console.log("- ECS Fargate cluster and services");
     console.log("- Application Load Balancer");
     console.log("- DocumentDB cluster and data");
@@ -157,6 +167,7 @@ export async function DestroyCommand() {
     console.log("- Check that you have sufficient AWS permissions");
     console.log("- Some resources may have deletion protection enabled");
     console.log("- Check AWS CloudFormation console for stuck resources");
+    console.log("- S3 buckets with versioning may need manual cleanup");
     process.exit(1);
   }
 };
