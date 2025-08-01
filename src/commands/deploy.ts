@@ -6,9 +6,78 @@ import { existsSync } from "fs";
 import { runCommand } from "../utils/runCommand";
 import { checkAWSConfiguration } from "../utils/checkAWSConfiguration";
 import { getAWSConfiguration } from "../utils/getAWSConfiguration";
+import AWS from 'aws-sdk';
+
+async function getAdminApiKey(region: string): Promise<string | null> {
+  const spinner = ora("Retrieving admin API key...").start();
+
+  try {
+    AWS.config.update({ region });
+    const secretsManager = new AWS.SecretsManager();
+
+    // Get secret ARN from CloudFormation exports
+    const cloudFormation = new AWS.CloudFormation();
+    const exports = await cloudFormation.listExports().promise();
+
+    const adminKeyExport = exports.Exports?.find(exp => 
+      exp.Name === 'PendulumAdminApiKeyArn'
+    );
+
+    if (!adminKeyExport?.Value) {
+      spinner.fail("Could not find admin API key ARN in CloudFormation exports");
+      return null;
+    }
+
+    // Get the secret value
+    const secretResult = await secretsManager
+    .getSecretValue({ SecretId: adminKeyExport.Value })
+    .promise();
+
+    if (!secretResult.SecretString) {
+      spinner.fail("Admin API key secret has no value");
+      return null;
+    }
+
+    const secretData = JSON.parse(secretResult.SecretString);
+    const adminKey = secretData['admin-key'];
+
+    if (!adminKey) {
+      spinner.fail("Admin key not found in secret");
+      return null;
+    }
+
+    spinner.succeed(("Admin API key retrieved"));
+    return `ak_${adminKey}`;
+  } catch (error) {
+    spinner.fail("Failed to retrieve admin API key");
+    console.error(chalk.yellow("Warning: Could not retrieve admin key. Check AWS permissions."));
+    return null;
+  }
+}
+
+async function getLoadBalancerURL(region: string): Promise<string | null> {
+  try {
+    AWS.config.update({ region });
+    const cloudFormation = new AWS.CloudFormation();
+
+    const stacks = await cloudFormation
+    .describeStacks({ StackName: 'Pendulum-ApplicationStack' })
+    .promise();
+
+    const stack = stacks.Stacks?.[0];
+    const albOutput = stack?.Outputs?.find(output =>
+      output.OutputKey === 'LoadBalancerURL'
+    );
+
+    return albOutput?.OutputValue || null;
+  } catch (error) {
+    console.warn("Could not retrieve load balancer URL");
+    return null;
+  }
+}
 
 async function installCDKDependencies(cliPath: string) {
-  const spinner = ora("Intalling CDK dependencies...").start();
+  const spinner = ora("Installing CDK dependencies...").start();
 
   try {
     await runCommand("npm", ["install"], { cwd: cliPath });
@@ -253,21 +322,49 @@ export async function DeployCommand() {
       frontendConfig
     );
 
-    console.log(chalk.green("\nPendulum successfully deployed to AWS!"));
-    console.log(chalk.blue("Deployment Details:"));
+    const adminKey = await getAdminApiKey(awsRegion);
+    const loadBalancerURL = await getLoadBalancerURL(awsRegion);
+
+    console.log(chalk.green("\n🎉 Pendulum successfully deployed to AWS!"));
+    console.log(chalk.blue("\n📋 Deployment Information:"));
     console.log(` Account: ${awsAccountId.trim()}`);
     console.log(` Region: ${awsRegion}`);
-    console.log("");
-    console.log(chalk.blue("Access Your Deployment:"));
+
+    if (loadBalancerURL) {
+      console.log(`   Backend API: ${loadBalancerURL}`);
+      console.log(`   Events url: ${loadBalancerURL.replace(':3000', ':8080')}/events`);
+    }
+
+    if (adminKey) {
+      console.log(chalk.cyan("\n🔑 Admin Dashboard Access:"));
+      console.log(chalk.bgBlack(chalk.white(`   Admin Key: ${adminKey}`)));
+      console.log(chalk.yellow("   ⚠️  Save this key securely - you'll need it to access the dashboard!"));
+    }
+
+    console.log(chalk.blue("\n🚀 Access Your Deployment:"));
     console.log(" Backend: Check CloudFormation outputs for ALB URL");
     console.log(" Frontend: Check CloudFormation outputs for CloudFront URL");
     console.log("");
     console.log(chalk.blue("Next Steps:"));
-    console.log("1. Check AWS CloudFormation console for your stack outputs");
-    console.log("2. Your frontend is live and connected to your backend!");
-    console.log("3. API calls to /api/* & /auth/* are automatically proxied");
+    if (adminKey) {
+      console.log("1. Save your admin key from above");
+      console.log("2. Your frontend is live and connected to your backend!");
+      console.log("3. Access the dashboard using your admin key");
+      console.log("4. API calls to /api/* & /auth/* are automatically proxied");
+    } else {
+      console.log("1. Check AWS CloudFormation console for your stack outputs");
+      console.log("2. Your frontend is live and connected to your backend!");
+      console.log("3. API calls to /api/* & /auth/* are automatically proxied");
+      console.log("4. Check AWS Secrets Manager for 'AdminApiKey' to access dashboard");
+    }
     console.log("");
     console.log(chalk.gray("To update deployment, rerun 'pendulum deploy'"));
+
+    if (!adminKey) {
+      console.log(chalk.yellow("\n⚠️  Admin key could not be retrieved automatically."));
+      console.log("Check AWS Secrets Manager in your console for 'AdminApiKey'");
+    }
+
   } catch (error) {
     console.error(chalk.red("Deployment failed:"), error);
     console.log(chalk.yellow("\nTroubleshooting tips:"));

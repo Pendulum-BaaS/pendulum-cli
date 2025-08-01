@@ -5,6 +5,7 @@ import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as secretsManager from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
+import { effect } from "zod";
 
 interface ApplicationStackProps extends cdk.StackProps {
   vpc: ec2.Vpc;
@@ -16,6 +17,8 @@ interface ApplicationStackProps extends cdk.StackProps {
   containerRegistryURI: string;
   appImageTag: string;
   eventsImageTag: string;
+  jwtSecret: secretsManager.Secret;
+  adminApiKey: secretsManager.Secret;
 }
 
 export class ApplicationStack extends cdk.Stack {
@@ -41,7 +44,23 @@ export class ApplicationStack extends cdk.Stack {
     appTaskDef.addToTaskRolePolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: ["secretsManager:GetSecretValue"],
-      resources: [props.databaseSecret.secretArn],
+      resources: [
+        props.databaseSecret.secretArn,
+        props.jwtSecret.secretArn,
+        props.adminApiKey.secretArn,
+      ],
+    }));
+
+    // Add ECR permissions to task execution role
+    appTaskDef.addToExecutionRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        "ecr:GetAuthorizationToken",
+        "ecr:BatchCheckLayerAvailability", 
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage"
+      ],
+      resources: ["*"]
     }));
 
     // add app container
@@ -54,6 +73,9 @@ export class ApplicationStack extends cdk.Stack {
         DATABASE_ENDPOINT: props.databaseEndpoint,
         SERVICE_TYPE: "app",
         EVENTS_SERVICE_URL: "http://events:8080",
+        PORT: "3000",
+        NODE_ENV: "production", 
+        DB_NAME: "pendulum-test",
       },
       secrets: {
         DB_USER: ecs.Secret.fromSecretsManager(
@@ -63,6 +85,14 @@ export class ApplicationStack extends cdk.Stack {
         DB_PW: ecs.Secret.fromSecretsManager(
           props.databaseSecret,
           "password"
+        ),
+        JWT_SECRET: ecs.Secret.fromSecretsManager(
+          props.jwtSecret,
+          "jwt-secret"
+        ),
+        ADMIN_API_KEY: ecs.Secret.fromSecretsManager(
+          props.adminApiKey,
+          "admin-key"
         ),
       },
       logging: ecs.LogDrivers.awsLogs({
@@ -79,6 +109,17 @@ export class ApplicationStack extends cdk.Stack {
       memoryLimitMiB: 512, // default
       cpu: 256, // default
     });
+
+    eventsTaskDef.addToExecutionRolePolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        "ecr:GetAuthorizationToken",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer", 
+        "ecr:BatchGetImage"
+      ],
+      resources: ["*"]
+    }));
 
     // add events container
     const eventsContainer = eventsTaskDef.addContainer("EventsContainer", {
@@ -152,6 +193,12 @@ export class ApplicationStack extends cdk.Stack {
     this.loadBalancer.addListener("Listened", {
       port: 80,
       defaultTargetGroups: [targetGroup],
+    });
+
+    // Output the Load Balancer URL
+    new cdk.CfnOutput(this, 'LoadBalancerURL', {
+      value: `http://${this.loadBalancer.loadBalancerDnsName}`,
+      description: 'URL of the Application Load Balancer'
     });
   }
 }

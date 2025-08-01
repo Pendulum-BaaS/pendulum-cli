@@ -1,6 +1,7 @@
 import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { Construct } from "constructs";
+import * as secretsManager from "aws-cdk-lib/aws-secretsmanager";
 
 interface SecurityStackProps extends cdk.StackProps {
   vpc: ec2.Vpc;
@@ -10,9 +11,39 @@ export class SecurityStack extends cdk.Stack {
   public readonly albSecurityGroup: ec2.SecurityGroup;
   public readonly ecsSecurityGroup: ec2.SecurityGroup;
   public readonly dbSecurityGroup: ec2.SecurityGroup;
+  public readonly jwtSecret: secretsManager.Secret;
+  public readonly adminApiKey: secretsManager.Secret;
 
   constructor(scope: Construct, id: string, props: SecurityStackProps) {
     super(scope, id, props);
+
+    this.jwtSecret = new secretsManager.Secret(this, 'JWTSecret', {
+      description: 'JWT Secret for Pendulum authentication',
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({}),
+        generateStringKey: 'jwt-secret',
+        excludeCharacters: '"@/\\`\'',
+        passwordLength: 64
+      }
+    });
+
+    this.adminApiKey = new secretsManager.Secret(this, 'AdminApiKey', {
+      description: 'Admin API key for Pendulum dashboard access',
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({}),
+        generateStringKey: 'admin-key',
+        excludeCharacters: '"@/\\`\'',
+        passwordLength: 32,
+        includeSpace: false
+      }
+    });
+
+    // CLI output for easy retrieval
+    new cdk.CfnOutput(this, 'AdminApiKeyArn', {
+      value: this.adminApiKey.secretArn,
+      description: 'ARN of the admin API key secret',
+      exportName: 'PendulumAdminApiKeyArn'
+    });
 
     this.albSecurityGroup = new ec2.SecurityGroup(this, "AlbSG", {
       vpc: props.vpc,
