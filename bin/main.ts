@@ -51,8 +51,6 @@ const frontendStack = new UserFrontendStack(app, "Pendulum-FrontendStack", {
   projectName: process.env.PROJECT_NAME || "pendulum-user-app",
   frontendBuildPath: process.env.FRONTEND_BUILD_PATH || "./dist",
   apiEndpoint: `https://${applicationStack.loadBalancer.loadBalancerDnsName}`,
-  // loadBalancer: applicationStack.loadBalancer,
-  // customDomainName: process.env.FRONTEND_DOMAIN_NAME,
   env: environment,
 });
 

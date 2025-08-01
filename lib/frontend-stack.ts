@@ -1,5 +1,4 @@
 import * as cdk from "aws-cdk-lib";
-// import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import * as cf from "aws-cdk-lib/aws-cloudfront";
@@ -10,12 +9,7 @@ interface UserFrontEndStackProps extends cdk.StackProps {
   frontendBuildPath: string;
   projectName: string;
   apiEndpoint: string;
-  // eventsEndpoint: string;
-  // loadBalancer: elbv2.ApplicationLoadBalancer
   customDomainName?: string;
-  // environmentVariables?: Record<string, string>;
-  // buildCommand?: string;
-  // cacheHeaders?: Record<string, string>;
 }
 
 export class UserFrontendStack extends cdk.Stack {
@@ -25,8 +19,6 @@ export class UserFrontendStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: UserFrontEndStackProps) {
     super(scope, id, props);
-
-    // const apiEndpoint = `https://${props.loadBalancer.loadBalancerDnsName}`;
 
     const formattedProjectName = props.projectName
       .toLowerCase()
@@ -120,10 +112,6 @@ export class UserFrontendStack extends cdk.Stack {
               protocolPolicy: apiProtocol === "https:"
                 ? cf.OriginProtocolPolicy.HTTPS_ONLY
                 : cf.OriginProtocolPolicy.HTTP_ONLY,
-              // customHeaders: {
-              //   "Cache-Control": "no-cache",
-              //   "Connection": "keep-alive",
-              // }
             }),
             viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
             cachePolicy: cf.CachePolicy.CACHING_DISABLED,
