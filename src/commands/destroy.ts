@@ -6,7 +6,7 @@ import { runCommand } from "../utils/runCommand";
 import { checkAWSConfiguration } from "../utils/checkAWSConfiguration";
 import { getAWSConfiguration } from "../utils/getAWSConfiguration";
 
-async function listAllStacks(region: string) {
+async function listAllStacks() {
   const spinner = ora("Finding known Pendulum stacks...").start();
 
   try {
@@ -28,7 +28,7 @@ async function listAllStacks(region: string) {
   }
 }
 
-async function destroyStacksSafely(
+async function destroyStacks(
   cliPath: string,
   accountId: string,
   region: string,
@@ -38,25 +38,6 @@ async function destroyStacksSafely(
   console.log(chalk.gray(`  CLI Path: ${cliPath}`));
   console.log(chalk.gray(`  Account: ${accountId}`));
   console.log(chalk.gray(`  Region: ${region}`));
-  console.log(chalk.blue("\nAttempting to destroy all stacks..."));
-
-  try {
-    await runCommand("npx", ["cdk", "destroy", ...stacks, "--force"], {
-      cwd: cliPath,
-      env: {
-        ...process.env,
-        CDK_DEFAULT_ACCOUNT: accountId,
-        CDK_DEFAULT_REGION: region,
-      },
-      stdio: "inherit",
-    });
-
-    console.log(chalk.green("All stacks destroyed successfully!"));
-    return;
-  } catch (error: any) {
-    console.log(chalk.yellow("Batch destroy failed, trying individual stacks..."));
-    console.log(chalk.gray(`  Error: ${error.message}`));
-  }
 
   for (const stack of stacks.reverse()) {
     console.log(chalk.blue(`\nAttempting to destroy: ${stack}`));
@@ -155,8 +136,8 @@ export async function DestroyCommand() {
   try {
     await checkAWSConfiguration();
 
-    const stacksToDestroy = await listAllStacks(awsRegion);
-    await destroyStacksSafely(
+    const stacksToDestroy = await listAllStacks();
+    await destroyStacks(
       cliPath,
       awsAccountId.trim(),
       awsRegion,
