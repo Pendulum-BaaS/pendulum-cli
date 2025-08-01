@@ -10,3 +10,5 @@ cdk.context.json
 
 .DS_Store
 .env
+backend-outputs.json
+frontend-outputs.json
