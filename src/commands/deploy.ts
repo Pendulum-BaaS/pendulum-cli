@@ -150,7 +150,7 @@ async function getFrontendConfigration() {
     {
       type: "input",
       name: "frontendBuildPath",
-      message: "Path to built frontend files (realtive to current directory):",
+      message: "Path to built frontend files (relative to current directory):",
       default: "./dist",
       validate: (input: string) => {
         const fullPath = resolve(process.cwd(), input);
@@ -164,6 +164,11 @@ async function getFrontendConfigration() {
       },
     },
   ]);
+
+  frontendConfig.frontendBuildPath = resolve(
+    process.cwd(),
+    frontendConfig.frontendBuildPath
+  );
 
   return frontendConfig;
 }
@@ -182,13 +187,13 @@ async function getFrontendConfigration() {
 export async function DeployCommand() {
   console.log(chalk.blue("Deploying Pendulum to AWS..."));
 
-  const projectPath = process.cwd();
-  const cliPath = resolve(projectPath, "pendulum-cli");
+  const cliPath = resolve(__dirname, "../..");
 
   try {
     const fs = await import("fs/promises");
-    await fs.access(resolve(projectPath, "pendulum"));
-    await fs.access(cliPath);
+    // await fs.access(resolve(projectPath, "pendulum"));
+    await fs.access(resolve(cliPath, "package.json"));
+    await fs.access(resolve(cliPath, "lib"));
   } catch (error) {
     console.log(chalk.red("Pendulum project not found!"));
     console.log(chalk.yellow("Run 'pendulum init' to set up your project."));
