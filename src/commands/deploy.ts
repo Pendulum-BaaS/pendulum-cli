@@ -80,7 +80,11 @@ async function installCDKDependencies(cliPath: string) {
   const spinner = ora("Installing CDK dependencies...").start();
 
   try {
-    await runCommand("npm", ["install"], { cwd: cliPath });
+    await runCommand("npm", ["install"], {
+      cwd: cliPath,
+      stdio: ["inherit", "ignore", "inherit"],
+    });
+
     spinner.succeed("CDK dependencies installed");
   } catch (error) {
     spinner.fail("Failed to install CDK dependencies");
@@ -98,7 +102,7 @@ async function bootstrapCDK(
   try {
     await runCommand(
       "npx",
-      ["cdk", "bootstrap", `aws://${accountId}/${region}`],
+      ["cdk", "bootstrap", `aws://${accountId}/${region}`, "--ci"],
       {
         cwd: cliPath,
         env: {
@@ -106,6 +110,7 @@ async function bootstrapCDK(
           CDK_DEFAULT_ACCOUNT: accountId,
           CDK_DEFAULT_REGION: region,
         },
+        stdio: ["inherit", "ignore", "inherit"],
       }
     );
 
@@ -139,7 +144,10 @@ async function deployBackendStacks(
         "--require-approval",
         "never",
         "--outputs-file",
-        "backend-outputs.json"
+        "backend-outputs.json",
+        "--ci",
+        // "concurrency",
+        // "4",
       ],
       {
       cwd: cliPath,
@@ -148,6 +156,7 @@ async function deployBackendStacks(
         CDK_DEFAULT_ACCOUNT: accountId,
         CDK_DEFAULT_REGION: region,
       },
+      stdio: ["inherit", "ignore", "inherit"],
     });
 
     spinner.succeed("Pendulum backend stacks deployed successfully");
@@ -176,17 +185,19 @@ async function deployFrontendStack(
         "never",
         "--outputs-file",
         "frontend-outputs.json",
+        "--ci",
       ],
-    {
-      cwd: cliPath,
-      env: {
-        ...process.env,
-        CDK_DEFAULT_ACCOUNT: accountId,
-        CDK_DEFAULT_REGION: region,
-        PROJECT_NAME: frontendConfig.projectName,
-        FRONTEND_BUILD_PATH: frontendConfig.frontendBuildPath,
-      }
-    });
+      {
+        cwd: cliPath,
+        env: {
+          ...process.env,
+          CDK_DEFAULT_ACCOUNT: accountId,
+          CDK_DEFAULT_REGION: region,
+          PROJECT_NAME: frontendConfig.projectName,
+          FRONTEND_BUILD_PATH: frontendConfig.frontendBuildPath,
+        },
+        stdio: ["inherit", "ignore", "inherit"],
+      });
 
     spinner.succeed("Frontend stack deployed successfully");
   } catch (error) {
@@ -260,7 +271,6 @@ export async function DeployCommand() {
 
   try {
     const fs = await import("fs/promises");
-    // await fs.access(resolve(projectPath, "pendulum"));
     await fs.access(resolve(cliPath, "package.json"));
     await fs.access(resolve(cliPath, "lib"));
   } catch (error) {

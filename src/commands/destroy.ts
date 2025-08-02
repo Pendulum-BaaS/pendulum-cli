@@ -50,7 +50,7 @@ async function destroyStacks(
           CDK_DEFAULT_ACCOUNT: accountId,
           CDK_DEFAULT_REGION: region,
         },
-        stdio: "inherit",
+        stdio: "pipe",
       });
 
       console.log(chalk.green(`Successfully destroyed: ${stack}`));
