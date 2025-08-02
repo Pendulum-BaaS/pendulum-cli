@@ -7,7 +7,7 @@ export function runCommand(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const proc = spawn(command, args, {
-      stdio: ["inherit", "inherit", "ignore"],
+      stdio: ["inherit", "ignore", "inherit"],
       ...options,
     });
 

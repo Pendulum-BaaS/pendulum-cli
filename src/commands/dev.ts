@@ -1,7 +1,8 @@
 import chalk from "chalk";
 import ora from "ora";
 import { runCommand } from "../utils/runCommand";
-import { resolve } from "path";
+import { resolve, join } from "path";
+import { existsSync, copyFileSync } from "fs";
 
 /*
 `pendulum dev`, when run from the root directory should do the following (happy path):
@@ -14,10 +15,24 @@ export async function DevCommand() {
   const spinner = ora("Starting Pendulum backend...").start();
 
   const projectPath = process.cwd();
+  console.log(projectPath);
+  const envPath = join(projectPath, ".env");
+  console.log(envPath);
+  const corePackagePath = resolve(projectPath, "node_modules", "@pendulum", "core");
+  console.log(corePackagePath);
+  const coreEnvPath = join(corePackagePath, ".env");
+  console.log(coreEnvPath);
 
   try {
+      console.log('test1');
+
+    if (existsSync(envPath)) {
+      console.log('test2');
+      copyFileSync(envPath, coreEnvPath);
+    }
+
     await runCommand("docker", ["compose", "up", "--build", "-d"], {
-      cwd: resolve(projectPath, "pendulum"),
+      cwd: corePackagePath,
     });
 
     spinner.succeed("Pendulum backend successfully started!");
@@ -35,6 +50,10 @@ export async function DevCommand() {
     );
     console.log(
       chalk.blue("    import { PendulumClient } from '@pendulum/sdk`;"),
+    );
+    console.log("");
+    console.log(
+      chalk.blue("View your admin dashboard at http://localhost:3000/admin"),
     );
   } catch (error) {
     spinner.fail(`Error starting the Pendulum backend: ${error}`);

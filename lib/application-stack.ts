@@ -5,7 +5,6 @@ import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as secretsManager from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
-import { effect } from "zod";
 
 interface ApplicationStackProps extends cdk.StackProps {
   vpc: ec2.Vpc;
@@ -181,7 +180,7 @@ export class ApplicationStack extends cdk.Stack {
       vpc: props.vpc,
       targetType: elbv2.TargetType.IP,
       healthCheck: {
-        path: "/health",
+        path: "/pendulum/health",
         healthyHttpCodes: "200",
       },
     });
