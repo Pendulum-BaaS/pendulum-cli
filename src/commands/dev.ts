@@ -4,30 +4,21 @@ import { runCommand } from "../utils/runCommand";
 import { resolve, join } from "path";
 import { existsSync, copyFileSync } from "fs";
 
-/*
-`pendulum dev`, when run from the root directory should do the following (happy path):
-1. run `docker compose up -d` from within the cwd's `pendulum` directory
-2. display success message and the apiUrl & eventsUrl
-3. instruct user on how to install sdk in frontend with new endpoint URLs
-*/
-
 export async function DevCommand() {
   const spinner = ora("Starting Pendulum backend...").start();
 
   const projectPath = process.cwd();
-  // console.log(projectPath);
   const envPath = join(projectPath, ".env");
-  // console.log(envPath);
-  const corePackagePath = resolve(projectPath, "node_modules", "@pendulum", "core");
-  // console.log(corePackagePath);
+  const corePackagePath = resolve(
+    projectPath,
+    "node_modules",
+    "@pendulum",
+    "core",
+  );
   const coreEnvPath = join(corePackagePath, ".env");
-  // console.log(coreEnvPath);
 
   try {
-      // console.log('test1');
-
     if (existsSync(envPath)) {
-      // console.log('test2');
       copyFileSync(envPath, coreEnvPath);
     }
 
