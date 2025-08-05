@@ -146,8 +146,6 @@ async function deployBackendStacks(
         "--outputs-file",
         "backend-outputs.json",
         "--ci",
-        // "concurrency",
-        // "4",
       ],
       {
       cwd: cliPath,

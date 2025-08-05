@@ -15,19 +15,19 @@ export async function DevCommand() {
   const spinner = ora("Starting Pendulum backend...").start();
 
   const projectPath = process.cwd();
-  console.log(projectPath);
+  // console.log(projectPath);
   const envPath = join(projectPath, ".env");
-  console.log(envPath);
+  // console.log(envPath);
   const corePackagePath = resolve(projectPath, "node_modules", "@pendulum", "core");
-  console.log(corePackagePath);
+  // console.log(corePackagePath);
   const coreEnvPath = join(corePackagePath, ".env");
-  console.log(coreEnvPath);
+  // console.log(coreEnvPath);
 
   try {
-      console.log('test1');
+      // console.log('test1');
 
     if (existsSync(envPath)) {
-      console.log('test2');
+      // console.log('test2');
       copyFileSync(envPath, coreEnvPath);
     }
 
