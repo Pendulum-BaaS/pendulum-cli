@@ -179,7 +179,7 @@ export class ApplicationStack extends cdk.Stack {
     // create target group for ALB to send traffic to
     const appTargetGroup = new elbv2.ApplicationTargetGroup(
       this,
-      "TargetGroup",
+      "AppTargetGroup",
       {
         port: 3000,
         protocol: elbv2.ApplicationProtocol.HTTP,
@@ -194,7 +194,7 @@ export class ApplicationStack extends cdk.Stack {
 
     const eventsTargetGroup = new elbv2.ApplicationTargetGroup(
       this,
-      "TargetGroup",
+      "EventsTargetGroup",
       {
         port: 8080,
         protocol: elbv2.ApplicationProtocol.HTTP,
@@ -209,7 +209,7 @@ export class ApplicationStack extends cdk.Stack {
 
     // add targets to target group
     this.appService.attachToApplicationTargetGroup(appTargetGroup);
-    this.appService.attachToApplicationTargetGroup(eventsTargetGroup);
+    this.eventsService.attachToApplicationTargetGroup(eventsTargetGroup);
 
     // create Listener for load balancer to send traffic to target group
     this.loadBalancer.addListener("Listened", {
