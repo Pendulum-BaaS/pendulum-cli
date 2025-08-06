@@ -40,32 +40,36 @@ export class ApplicationStack extends cdk.Stack {
     });
 
     // Grant the task permission to read from Secrets Manager
-    appTaskDef.addToTaskRolePolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: ["secretsManager:GetSecretValue"],
-      resources: [
-        props.databaseSecret.secretArn,
-        props.jwtSecret.secretArn,
-        props.adminApiKey.secretArn,
-      ],
-    }));
+    appTaskDef.addToTaskRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["secretsManager:GetSecretValue"],
+        resources: [
+          props.databaseSecret.secretArn,
+          props.jwtSecret.secretArn,
+          props.adminApiKey.secretArn,
+        ],
+      }),
+    );
 
     // Add ECR permissions to task execution role
-    appTaskDef.addToExecutionRolePolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        "ecr:GetAuthorizationToken",
-        "ecr:BatchCheckLayerAvailability", 
-        "ecr:GetDownloadUrlForLayer",
-        "ecr:BatchGetImage"
-      ],
-      resources: ["*"]
-    }));
+    appTaskDef.addToExecutionRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+        ],
+        resources: ["*"],
+      }),
+    );
 
     // add app container
     const appContainer = appTaskDef.addContainer("AppContainer", {
       image: ecs.ContainerImage.fromRegistry(
-        `${props.containerRegistryURI}:${props.appImageTag}`
+        `${props.containerRegistryURI}:${props.appImageTag}`,
       ),
       environment: {
         ...props.containerEnvironment,
@@ -73,25 +77,22 @@ export class ApplicationStack extends cdk.Stack {
         SERVICE_TYPE: "app",
         EVENTS_SERVICE_URL: "http://events:8080",
         PORT: "3000",
-        NODE_ENV: "production", 
+        NODE_ENV: "production",
         DB_NAME: "pendulum-test",
       },
       secrets: {
         DB_USER: ecs.Secret.fromSecretsManager(
           props.databaseSecret,
-          "username"
+          "username",
         ),
-        DB_PW: ecs.Secret.fromSecretsManager(
-          props.databaseSecret,
-          "password"
-        ),
+        DB_PW: ecs.Secret.fromSecretsManager(props.databaseSecret, "password"),
         JWT_SECRET: ecs.Secret.fromSecretsManager(
           props.jwtSecret,
-          "jwt-secret"
+          "jwt-secret",
         ),
         ADMIN_API_KEY: ecs.Secret.fromSecretsManager(
           props.adminApiKey,
-          "admin-key"
+          "admin-key",
         ),
       },
       logging: ecs.LogDrivers.awsLogs({
@@ -109,21 +110,23 @@ export class ApplicationStack extends cdk.Stack {
       cpu: 256, // default
     });
 
-    eventsTaskDef.addToExecutionRolePolicy(new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: [
-        "ecr:GetAuthorizationToken",
-        "ecr:BatchCheckLayerAvailability",
-        "ecr:GetDownloadUrlForLayer", 
-        "ecr:BatchGetImage"
-      ],
-      resources: ["*"]
-    }));
+    eventsTaskDef.addToExecutionRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+        ],
+        resources: ["*"],
+      }),
+    );
 
     // add events container
     const eventsContainer = eventsTaskDef.addContainer("EventsContainer", {
       image: ecs.ContainerImage.fromRegistry(
-        `${props.containerRegistryURI}:${props.eventsImageTag}`
+        `${props.containerRegistryURI}:${props.eventsImageTag}`,
       ),
       environment: {
         ...props.containerEnvironment,
@@ -174,19 +177,39 @@ export class ApplicationStack extends cdk.Stack {
     });
 
     // create target group for ALB to send traffic to
-    const targetGroup = new elbv2.ApplicationTargetGroup(this, "TargetGroup", {
-      port: 3000,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      vpc: props.vpc,
-      targetType: elbv2.TargetType.IP,
-      healthCheck: {
-        path: "/pendulum/health",
-        healthyHttpCodes: "200",
+    const appTargetGroup = new elbv2.ApplicationTargetGroup(
+      this,
+      "TargetGroup",
+      {
+        port: 3000,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        vpc: props.vpc,
+        targetType: elbv2.TargetType.IP,
+        healthCheck: {
+          path: "/pendulum/health",
+          healthyHttpCodes: "200",
+        },
       },
-    });
+    );
+
+    const eventsTargetGroup = new elbv2.ApplicationTargetGroup(
+      this,
+      "TargetGroup",
+      {
+        port: 8080,
+        protocol: elbv2.ApplicationProtocol.HTTP,
+        vpc: props.vpc,
+        targetType: elbv2.TargetType.IP,
+        healthCheck: {
+          path: "/pendulum-events/health",
+          healthyHttpCodes: "200",
+        },
+      },
+    );
 
     // add targets to target group
-    this.appService.attachToApplicationTargetGroup(targetGroup);
+    this.appService.attachToApplicationTargetGroup(appTargetGroup);
+    this.appService.attachToApplicationTargetGroup(eventsTargetGroup);
 
     // create Listener for load balancer to send traffic to target group
     this.loadBalancer.addListener("Listened", {
@@ -195,9 +218,9 @@ export class ApplicationStack extends cdk.Stack {
     });
 
     // Output the Load Balancer URL
-    new cdk.CfnOutput(this, 'LoadBalancerURL', {
+    new cdk.CfnOutput(this, "LoadBalancerURL", {
       value: `http://${this.loadBalancer.loadBalancerDnsName}`,
-      description: 'URL of the Application Load Balancer'
+      description: "URL of the Application Load Balancer",
     });
   }
 }
