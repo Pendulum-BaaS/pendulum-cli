@@ -67,64 +67,64 @@ export class UserFrontendStack extends cdk.Stack {
     }
 
     // Create CloudFront distribution
-    this.distribution = new cf.Distribution(
-      this,
-      "UserFrontendDistribution",
-      {
-        defaultBehavior: {
-          origin: origins.S3BucketOrigin.withOriginAccessControl(this.bucket),
+    this.distribution = new cf.Distribution(this, "UserFrontendDistribution", {
+      defaultBehavior: {
+        origin: origins.S3BucketOrigin.withOriginAccessControl(this.bucket),
+        viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        allowedMethods: cf.AllowedMethods.ALLOW_GET_HEAD,
+        cachedMethods: cf.CachedMethods.CACHE_GET_HEAD,
+        compress: true,
+      },
+      additionalBehaviors: {
+        "/pendulum/*": {
+          origin: new origins.HttpOrigin(apiHostname, {
+            httpPort: apiPort,
+            httpsPort: apiPort,
+            protocolPolicy:
+              apiProtocol === "https:"
+                ? cf.OriginProtocolPolicy.HTTPS_ONLY
+                : cf.OriginProtocolPolicy.HTTP_ONLY,
+          }),
           viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-          allowedMethods: cf.AllowedMethods.ALLOW_GET_HEAD,
-          cachedMethods: cf.CachedMethods.CACHE_GET_HEAD,
-          compress: true,
+          cachePolicy: cf.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cf.OriginRequestPolicy.ALL_VIEWER,
+          allowedMethods: cf.AllowedMethods.ALLOW_ALL,
         },
-        additionalBehaviors: {
-          "/api/*": {
-            origin: new origins.HttpOrigin(apiHostname, {
-              httpPort: apiPort,
-              httpsPort: apiPort,
-              protocolPolicy: apiProtocol === "https:"
+        "/pendulum-events/*": {
+          origin: new origins.HttpOrigin(apiHostname, {
+            httpPort: apiPort,
+            httpsPort: apiPort,
+            protocolPolicy:
+              apiProtocol === "https:"
                 ? cf.OriginProtocolPolicy.HTTPS_ONLY
                 : cf.OriginProtocolPolicy.HTTP_ONLY,
-            }),
-            viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-            cachePolicy: cf.CachePolicy.CACHING_DISABLED,
-            originRequestPolicy: cf.OriginRequestPolicy.ALL_VIEWER,
-            allowedMethods: cf.AllowedMethods.ALLOW_ALL,
-          },
-          "/auth/*": {
-            origin: new origins.HttpOrigin(apiHostname, {
-              httpPort: apiPort,
-              httpsPort: apiPort,
-              protocolPolicy: apiProtocol === "https:"
-                ? cf.OriginProtocolPolicy.HTTPS_ONLY
-                : cf.OriginProtocolPolicy.HTTP_ONLY,
-            }),
-            viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-            cachePolicy: cf.CachePolicy.CACHING_DISABLED,
-            originRequestPolicy: cf.OriginRequestPolicy.ALL_VIEWER,
-            allowedMethods: cf.AllowedMethods.ALLOW_ALL,
-          },
-          "/events/*": {
-            origin: new origins.HttpOrigin(apiHostname, {
-              httpPort: apiPort,
-              httpsPort: apiPort,
-              protocolPolicy: apiProtocol === "https:"
-                ? cf.OriginProtocolPolicy.HTTPS_ONLY
-                : cf.OriginProtocolPolicy.HTTP_ONLY,
-            }),
-            viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-            cachePolicy: cf.CachePolicy.CACHING_DISABLED,
-            originRequestPolicy: cf.OriginRequestPolicy.ALL_VIEWER,
-            allowedMethods: cf.AllowedMethods.ALLOW_GET_HEAD,
-          },
+          }),
+          viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          cachePolicy: cf.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cf.OriginRequestPolicy.ALL_VIEWER,
+          allowedMethods: cf.AllowedMethods.ALLOW_ALL,
         },
-        defaultRootObject: "index.html",
-        priceClass: cf.PriceClass.PRICE_CLASS_100,
-        enabled: true,
-        comment: `${props.projectName} Distribution (Powered by Pendulum)`,
-      }
-    );
+        "/admin/*": {
+          origin: new origins.HttpOrigin(apiHostname, {
+            httpPort: apiPort,
+            httpsPort: apiPort,
+            protocolPolicy:
+              apiProtocol === "https:"
+                ? cf.OriginProtocolPolicy.HTTPS_ONLY
+                : cf.OriginProtocolPolicy.HTTP_ONLY,
+          }),
+          viewerProtocolPolicy: cf.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+          cachePolicy: cf.CachePolicy.CACHING_DISABLED,
+          originRequestPolicy: cf.OriginRequestPolicy.ALL_VIEWER,
+          allowedMethods: cf.AllowedMethods.ALLOW_ALL,
+        },
+      },
+      httpVersion: cf.HttpVersion.HTTP1_1,
+      defaultRootObject: "index.html",
+      priceClass: cf.PriceClass.PRICE_CLASS_100,
+      enabled: true,
+      comment: `${props.projectName} Distribution (Powered by Pendulum)`,
+    });
 
     this.bucketDeployment = new s3deploy.BucketDeployment(
       this,

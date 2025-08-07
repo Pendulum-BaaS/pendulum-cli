@@ -52,7 +52,7 @@ const applicationStack = new ApplicationStack(app, "Pendulum-ApplicationStack", 
 const frontendStack = new UserFrontendStack(app, "Pendulum-FrontendStack", {
   projectName: process.env.PROJECT_NAME || "pendulum-user-app",
   frontendBuildPath: process.env.FRONTEND_BUILD_PATH || "./dist",
-  apiEndpoint: `https://${applicationStack.loadBalancer.loadBalancerDnsName}`,
+  apiEndpoint: `http://${applicationStack.loadBalancer.loadBalancerDnsName}`,
   env: environment,
 });
 
