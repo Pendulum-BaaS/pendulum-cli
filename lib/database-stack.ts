@@ -24,7 +24,7 @@ export class DatabaseStack extends cdk.Stack {
       description: "Pendulum DocumentDB cluster credentials",
       generateSecretString: {
         secretStringTemplate: JSON.stringify({
-          username: process.env.DB_USER || "mongouser"
+          username: process.env.DB_USER || "mongouser",
         }),
         generateStringKey: "password",
         excludeCharacters: '"@/\\:?#[]%&=+',
@@ -52,5 +52,17 @@ export class DatabaseStack extends cdk.Stack {
     });
 
     this.clusterEndpoint = this.cluster.clusterEndpoint.hostname;
+
+    new cdk.CfnOutput(this, 'DatabaseEndpoint', {
+      value: this.clusterEndpoint,
+      description: 'DocumentDB cluster endpoint',
+      exportName: 'PendulumDatabaseEndpoint'
+    });
+
+    new cdk.CfnOutput(this, 'DatabaseSecretArn', {
+      value: this.secret.secretArn,
+      description: 'Database secret ARN',
+      exportName: 'PendulumDatabaseSecretArn'
+    });
   }
 }

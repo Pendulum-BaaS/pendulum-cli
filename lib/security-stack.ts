@@ -67,32 +67,48 @@ export class SecurityStack extends cdk.Stack {
   }
 
   private configureSecurityGroupRules() {
-    // ALB rules
+    // ALB rules - allow HTTP traffic from internet > cloudfront > alb
     this.albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.HTTP,
       "Allow all inbound HTTP traffic",
     );
 
+    // ALB egress to ECS for app service (port 3000)
     this.albSecurityGroup.addEgressRule(
       this.ecsSecurityGroup,
       ec2.Port.tcp(3000),
-      "Allow traffic on port 3000 to ECS",
+      "Allow traffic on port 3000 to ECS app service",
     );
 
-    // ECS rules
+    // ALB egress to ECS for events service (port 8080)
+    this.albSecurityGroup.addEgressRule(
+      this.ecsSecurityGroup,
+      ec2.Port.tcp(8080),
+      "Allow traffic on port 8080 to ECS events service",
+    );    
+
+    // ECS rules - allow traffic from alb
     this.ecsSecurityGroup.addIngressRule(
       this.albSecurityGroup,
       ec2.Port.tcp(3000),
       "Allow traffic on port 3000 from ALB",
     );
 
+    this.ecsSecurityGroup.addIngressRule(
+      this.albSecurityGroup,
+      ec2.Port.tcp(8080),
+      "Allow traffic on port 8080 from ALB",
+    );
+
+    // ECS to DocDB
     this.ecsSecurityGroup.addEgressRule(
       this.dbSecurityGroup,
       ec2.Port.tcp(27017),
-      "Allow traffic on port 27107 to DocDB",
+      "Allow traffic on port 27017 to DocDB",
     );
 
+    // ECS outbound for pulling images and AWS API calls
     this.ecsSecurityGroup.addEgressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.HTTPS,
@@ -100,13 +116,20 @@ export class SecurityStack extends cdk.Stack {
       "accessing AWS APIs",
     );
 
+    // Inter-service communication (app service to events service)
     this.ecsSecurityGroup.addEgressRule(
       this.ecsSecurityGroup,
       ec2.Port.tcp(8080),
       "Allow ECS tasks to communicate with each other on port 8080",
     );
 
-    // db rules
+    this.ecsSecurityGroup.addIngressRule(
+      this.ecsSecurityGroup,
+      ec2.Port.tcp(8080),
+      "Allow ECS tasks to receive communication on port 8080",
+    );
+
+    // db rules - allow traffic from ECS
     this.dbSecurityGroup.addIngressRule(
       this.ecsSecurityGroup,
       ec2.Port.tcp(27017),
