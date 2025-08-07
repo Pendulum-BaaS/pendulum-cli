@@ -77,7 +77,13 @@ export class SecurityStack extends cdk.Stack {
     this.albSecurityGroup.addEgressRule(
       this.ecsSecurityGroup,
       ec2.Port.tcp(3000),
-      "Allow traffic on port 3000 to ECS",
+      "Allow traffic on port 3000 to ECS for app server traffic",
+    );
+
+    this.albSecurityGroup.addEgressRule(
+      this.ecsSecurityGroup,
+      ec2.Port.tcp(8080),
+      "Allow traffic on port 8080 to ECS for events server traffic",
     );
 
     // ECS rules
@@ -87,10 +93,22 @@ export class SecurityStack extends cdk.Stack {
       "Allow traffic on port 3000 from ALB",
     );
 
+    this.ecsSecurityGroup.addIngressRule(
+      this.albSecurityGroup,
+      ec2.Port.tcp(8080),
+      "Allow traffic on port 8080 from ALB",
+    );
+
+    this.ecsSecurityGroup.addIngressRule(
+      this.ecsSecurityGroup,
+      ec2.Port.tcp(8080),
+      "Allow ECS tasks to receive traffic from each other on port 8080",
+    );
+
     this.ecsSecurityGroup.addEgressRule(
       this.dbSecurityGroup,
       ec2.Port.tcp(27017),
-      "Allow traffic on port 27107 to DocDB",
+      "Allow traffic on port 27017 to DocDB",
     );
 
     this.ecsSecurityGroup.addEgressRule(
@@ -104,6 +122,12 @@ export class SecurityStack extends cdk.Stack {
       this.ecsSecurityGroup,
       ec2.Port.tcp(8080),
       "Allow ECS tasks to communicate with each other on port 8080",
+    );
+
+    this.ecsSecurityGroup.addEgressRule(
+      this.albSecurityGroup,
+      ec2.Port.HTTP,
+      "Allow ECS tasks to send HTTP traffic to ALB",
     );
 
     // db rules
