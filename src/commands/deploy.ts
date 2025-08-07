@@ -2,7 +2,7 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 import ora from "ora";
 import { resolve } from "path";
-import { existsSync } from "fs";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import { runCommand } from "../utils/runCommand";
 import { checkAWSConfiguration } from "../utils/checkAWSConfiguration";
 import { getAWSConfiguration } from "../utils/getAWSConfiguration";
@@ -55,24 +55,45 @@ async function getAdminApiKey(region: string): Promise<string | null> {
   }
 }
 
-async function getLoadBalancerURL(region: string): Promise<string | null> {
+async function getDeploymentUrls(region: string): Promise<{
+  appUrl: string | null;
+  backendApiUrl: string | null;
+  eventsUrl: string | null;
+}> {
   try {
     AWS.config.update({ region });
     const cloudFormation = new AWS.CloudFormation();
 
     const stacks = await cloudFormation
-    .describeStacks({ StackName: 'Pendulum-ApplicationStack' })
-    .promise();
+      .describeStacks({ StackName: 'Pendulum-ApplicationStack' })
+      .promise();
 
     const stack = stacks.Stacks?.[0];
-    const albOutput = stack?.Outputs?.find(output =>
-      output.OutputKey === 'LoadBalancerURL'
+
+    const appUrlOutput = stack?.Outputs?.find(output =>
+      output.OutputKey === 'AppUrl'
     );
 
-    return albOutput?.OutputValue || null;
+    const backendApiUrlOutput = stack?.Outputs?.find(output =>
+      output.OutputKey === 'BackendApiUrl'
+    );
+
+    const eventsUrlOutput = stack?.Outputs?.find(output =>
+      output.OutputKey === 'EventsUrl'
+    );
+
+    return {
+      appUrl: appUrlOutput?.OutputValue || null,
+      backendApiUrl: backendApiUrlOutput?.OutputValue || null,
+      eventsUrl: eventsUrlOutput?.OutputValue || null
+    }
   } catch (error) {
-    console.warn("Could not retrieve load balancer URL");
-    return null;
+    console.warn("Could not retrieve deployment URLs");
+    return {
+      appUrl: null,
+      backendApiUrl: null,
+      eventsUrl: null,
+    };
   }
 }
 
@@ -120,14 +141,50 @@ async function bootstrapCDK(
   }
 }
 
-async function deployBackendStacks(
+async function injectEnvironmentVariables(
+  frontendBuildPath: string,
+  apiUrl: string,
+  eventsUrl: string
+) {
+  const spinner = ora("Injecting backend URLs into frontend build...").start();
+
+  try {
+    const indexHtmlPath = resolve(frontendBuildPath, "index.html");
+
+    if (!existsSync(indexHtmlPath)) {
+      throw new Error("index.html not found in build directory");
+    }
+
+    let indexHtml = readFileSync(indexHtmlPath, "utf8");
+
+    const envScript = `
+    <script>
+      window.PENDULUM_CONFIG = {
+        apiUrl: "${apiUrl}",
+        eventsUrl: "${eventsUrl}",
+      };
+    </script>
+    `;
+
+    indexHtml = indexHtml.replace("</head>", `${envScript}</head>`);
+
+    writeFileSync(indexHtmlPath, indexHtml);
+    spinner.succeed("Backend URLs injected into frontend build");
+  } catch (error) {
+    spinner.fail("Failed to inject environment variables");
+    throw error;
+  }
+}
+
+async function deployStacks(
   cliPath: string,
   accountId: string,
   region: string,
+  frontendConfig: any,
 ) {
-  const spinner = ora("Deploying Pendulum backend stacks to AWS...").start();
+  const spinner = ora("Deploying Pendulum stacks to AWS...").start();
 
-  const backendStacks = [
+  const stacks = [
     "Pendulum-NetworkStack",
     "Pendulum-SecurityStack",
     "Pendulum-DatabaseStack",
@@ -140,49 +197,11 @@ async function deployBackendStacks(
       [
         "cdk",
         "deploy",
-        ...backendStacks,
+        ...stacks,
         "--require-approval",
         "never",
         "--outputs-file",
-        "backend-outputs.json",
-        "--ci",
-      ],
-      {
-      cwd: cliPath,
-      env: {
-        ...process.env,
-        CDK_DEFAULT_ACCOUNT: accountId,
-        CDK_DEFAULT_REGION: region,
-      },
-      stdio: ["inherit", "ignore", "inherit"],
-    });
-
-    spinner.succeed("Pendulum backend stacks deployed successfully");
-  } catch (error) {
-    spinner.fail("Failed to deploy Pendulum backend stacks");
-    throw error;
-  }
-}
-
-async function deployFrontendStack(
-  cliPath: string,
-  accountId: string,
-  region: string,
-  frontendConfig: any,
-) {
-  const spinner = ora("Deploying frontend stack to AWS...").start();
-
-  try {
-    await runCommand(
-      "npx",
-      [
-        "cdk",
-        "deploy",
-        "Pendulum-FrontendStack",
-        "--require-approval",
-        "never",
-        "--outputs-file",
-        "frontend-outputs.json",
+        "deployment-outputs.json",
         "--ci",
       ],
       {
@@ -193,30 +212,107 @@ async function deployFrontendStack(
           CDK_DEFAULT_REGION: region,
           PROJECT_NAME: frontendConfig.projectName,
           FRONTEND_BUILD_PATH: frontendConfig.frontendBuildPath,
+          CUSTOM_DOMAIN_NAME: frontendConfig.customDomainName || "",
+          CERTIFICATE_ARN: frontendConfig.certificateArn || "",
         },
         stdio: ["inherit", "ignore", "inherit"],
-      });
+      }
+    );
 
-    spinner.succeed("Frontend stack deployed successfully");
+    spinner.succeed("Pendulum stacks deployed successfully");
   } catch (error) {
-    spinner.fail("Failed to deploy frontend stack");
+    spinner.fail("Failed to deploy Pendulum stacks");
     throw error;
   }
 }
 
-async function getFrontendConfigration() {
-  console.log(chalk.blue("\nFrontend Deployment Configuration"));
-  console.log(chalk.gray("Configure your frontend application deployment"));
+// async function deployFrontendStack(
+//   cliPath: string,
+//   accountId: string,
+//   region: string,
+//   frontendConfig: any,
+//   apiUrl: string,
+// ) {
+//   const spinner = ora("Deploying frontend stack to AWS...").start();
+
+//   try {
+//     await runCommand(
+//       "npx",
+//       [
+//         "cdk",
+//         "deploy",
+//         "Pendulum-FrontendStack",
+//         "--require-approval",
+//         "never",
+//         "--outputs-file",
+//         "frontend-outputs.json",
+//         "--ci",
+//       ],
+//       {
+//         cwd: cliPath,
+//         env: {
+//           ...process.env,
+//           CDK_DEFAULT_ACCOUNT: accountId,
+//           CDK_DEFAULT_REGION: region,
+//           PROJECT_NAME: frontendConfig.projectName,
+//           FRONTEND_BUILD_PATH: frontendConfig.frontendBuildPath,
+//           API_ENDPOINT: apiUrl,
+//         },
+//         stdio: ["inherit", "ignore", "inherit"],
+//       });
+
+//     spinner.succeed("Frontend stack deployed successfully");
+//   } catch (error) {
+//     spinner.fail("Failed to deploy frontend stack");
+//     throw error;
+//   }
+// }
+
+async function getFrontendConfiguration() {
+  console.log(chalk.blue("\nPendulum Deployment Configuration"));
+  console.log(chalk.gray("Configure your application deployment"));
+
+  const { useCustomDomain } = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "useCustomDomain",
+      message: "Do you want to use a custom domain for your backend API? (optional)" +
+        " You will need to have an SSL certificate ready in AWS Certificate Manager",
+      default: false,
+    }
+  ]);
+
+  let customDomainConfig: {
+    customDomainName?: string;
+    certificateArn?: string;
+  } = {};
+
+  if (useCustomDomain) {
+    customDomainConfig = await inquirer.prompt([
+      {
+        type: "input",
+        name: "customDomainName",
+        message: "Enter your backend domain name (e.g., yourdomain.com):",
+        validate: (input) => input.trim() ? true : "Domain name is required"
+      },
+      {
+        type: "input", 
+        name: "certificateArn",
+        message: "Enter your SSL certificate ARN from AWS Certificate Manager:",
+        validate: (input) => input.startsWith("arn:aws:acm:") ? true : "Invalid certificate ARN"     
+      }
+    ]);
+  }
 
   const frontendConfig = await inquirer.prompt([
     {
       type: "input",
       name: "projectName",
-      message: "Project name for your frontend:",
+      message: "Project name for your application:",
       default: "my-pendulum-app",
       validate: (input: string) => {
         if (!input.trim()) {
-          return "project name is required";
+          return "Project name is required";
         } else if (!/^[a-z0-9-_]+$/i.test(input)) { // checks that input only contains alphanumeric characters, hyphens, and underscores
           return "Project name can only contain letters, numbers, hyphens, " +
             "and underscores";
@@ -248,7 +344,7 @@ async function getFrontendConfigration() {
     frontendConfig.frontendBuildPath
   );
 
-  return frontendConfig;
+  return { ...frontendConfig, ...customDomainConfig };
 }
 
 /*
@@ -281,7 +377,7 @@ export async function DeployCommand() {
     {
       type: "confirm",
       name: "proceed",
-      message: "This will deploy Pendulum backend to AWS using CDK. Continue?",
+      message: "This will deploy Pendulum to AWS using CDK. Continue?",
       default: true,
     },
   ]);
@@ -292,13 +388,14 @@ export async function DeployCommand() {
   }
 
   const { awsAccountId, awsRegion } = await getAWSConfiguration();
-  const frontendConfig = await getFrontendConfigration();
+  const frontendConfig = await getFrontendConfiguration();
 
   const deploymentSummary = [
     `Account: ${awsAccountId.trim()}`,
     `Region: ${awsRegion}`,
-    `Backend: Pendulum BaaS (4 stacks)`,
-    `Frontend: ${frontendConfig.projectName}`,
+    `Project: ${frontendConfig.projectName}`,
+    `Custom Domain: ${frontendConfig.customDomainName ||
+      'No (will use CloudFront domain)'}`
   ];
 
   console.log(chalk.blue("\nDeployment Summary:"));
@@ -322,25 +419,90 @@ export async function DeployCommand() {
     await checkAWSConfiguration();
     await installCDKDependencies(cliPath);
     await bootstrapCDK(cliPath, awsAccountId.trim(), awsRegion);
-    await deployBackendStacks(cliPath, awsAccountId.trim(), awsRegion);
-    await deployFrontendStack(
-      cliPath,
-      awsAccountId.trim(),
-      awsRegion,
-      frontendConfig
-    );
+
+    // First, get the expected URLs to inject into frontend before deployment
+    const expectedApiUrl = frontendConfig.customDomainName 
+      ? `https://${frontendConfig.customDomainName}/pendulum`
+      : 'https://CLOUDFRONT_DOMAIN/pendulum'; // Will be replaced after deployment
+
+    const expectedEventsUrl = frontendConfig.customDomainName
+      ? `https://${frontendConfig.customDomainName}/pendulum-events`
+      : 'https://CLOUDFRONT_DOMAIN/pendulum-events'; // Will be replaced after deployment
+
+    // Inject environment variables into frontend build before deployment
+    if (!frontendConfig.customDomainName) {
+      console.log(chalk.yellow("⚠️  Using CloudFront domain - URLs will be updated after deployment"));
+    } else {
+      await injectEnvironmentVariables(
+        frontendConfig.frontendBuildPath,
+        expectedApiUrl,
+        expectedEventsUrl,
+      );
+    }
+
+    await deployStacks(cliPath, awsAccountId.trim(), awsRegion, frontendConfig);
+
+    // Get actual deployment URLs
+    const { appUrl, backendApiUrl, eventsUrl } = await getDeploymentUrls(awsRegion);
+
+    // If we used CloudFront domain, update the frontend with actual URLs
+    if (!frontendConfig.customDomainName && appUrl) {
+      const actualApiUrl = `${appUrl}/pendulum`;
+      const actualEventsUrl = `${appUrl}/pendulum-events`;
+      
+      await injectEnvironmentVariables(
+        frontendConfig.frontendBuildPath,
+        actualApiUrl,
+        actualEventsUrl,
+      );
+
+      // Redeploy only the ApplicationStack to update frontend with correct URLs
+      const spinner = ora("Updating frontend with actual CloudFront URLs...").start();
+      try {
+        await runCommand(
+          "npx",
+          [
+            "cdk",
+            "deploy",
+            "Pendulum-ApplicationStack",
+            "--require-approval",
+            "never",
+            "--ci",
+          ],
+          {
+            cwd: cliPath,
+            env: {
+              ...process.env,
+              CDK_DEFAULT_ACCOUNT: awsAccountId.trim(),
+              CDK_DEFAULT_REGION: awsRegion,
+              PROJECT_NAME: frontendConfig.projectName,
+              FRONTEND_BUILD_PATH: frontendConfig.frontendBuildPath,
+              CUSTOM_DOMAIN_NAME: frontendConfig.customDomainName || "",
+              CERTIFICATE_ARN: frontendConfig.certificateArn || "",
+            },
+            stdio: ["inherit", "ignore", "inherit"],
+          }
+        );
+        spinner.succeed("Frontend updated with correct URLs");
+      } catch (error) {
+        spinner.warn("Frontend URL update failed - manually update if needed");
+      }
+    }
 
     const adminKey = await getAdminApiKey(awsRegion);
-    const loadBalancerURL = await getLoadBalancerURL(awsRegion);
 
     console.log(chalk.green("\n🎉 Pendulum successfully deployed to AWS!"));
     console.log(chalk.blue("\n📋 Deployment Information:"));
     console.log(` Account: ${awsAccountId.trim()}`);
     console.log(` Region: ${awsRegion}`);
+    console.log(`   Backend API: ${appUrl}`);
+    console.log(`   Events URL: ${eventsUrl}`);
 
-    if (loadBalancerURL) {
-      console.log(`   Backend API: ${loadBalancerURL}`);
-      console.log(`   Events url: ${loadBalancerURL.replace(':3000', ':8080')}/events`);
+    if (appUrl) {
+      console.log(chalk.blue("\n🌐 Application URLs:"));
+      console.log(`  Frontend: ${appUrl}`);
+      console.log(`  Backend API: ${backendApiUrl || appUrl + '/pendulum'}`);
+      console.log(`  Events: ${eventsUrl || appUrl + '/pendulum-events'}`);
     }
 
     if (adminKey) {
@@ -379,12 +541,11 @@ export async function DeployCommand() {
     console.log("- Ensure AWS credentials are configured (aws configure)");
     console.log("- Verify your AWS account ID and region are correct");
     console.log("- Check that you have sufficient AWS permissions");
-    console.log(
-      "- Ensure AWS CDK is installed globally: npm install -g aws-cdk"
-    );
+    console.log("- Ensure AWS CDK is installed globally: npm install -g aws-cdk");
     console.log("- Ensure Docker is running (required for CDK deployment)");
     console.log("- Verify your frontend build path is correct");
     console.log("- Ensure your frontend project was built successfully");
+    console.log("- Check AWS DocumentDB cluster is healthy");
     process.exit(1);
   }
 };
