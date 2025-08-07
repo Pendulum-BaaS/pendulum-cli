@@ -4,7 +4,7 @@ import { NetworkStack } from "../lib/network-stack";
 import { DatabaseStack } from "../lib/database-stack";
 import { SecurityStack } from "../lib/security-stack";
 import { ApplicationStack } from "../lib/application-stack";
-import { UserFrontendStack } from "../lib/frontend-stack";
+// import { UserFrontendStack } from "../lib/frontend-stack";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -13,7 +13,7 @@ const app = new cdk.App();
 
 const environment = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
-  region: process.env.DEFAULT_REGION || "us-east-1",
+  region: process.env.CDK_DEFAULT_REGION || "us-east-1",
 };
 
 const networkStack = new NetworkStack(app, "Pendulum-NetworkStack", {
@@ -38,7 +38,7 @@ const applicationStack = new ApplicationStack(app, "Pendulum-ApplicationStack", 
   databaseEndpoint: databaseStack.clusterEndpoint,
   databaseSecret: databaseStack.secret,
   containerEnvironment: {
-    DB_NAME: process.env.DB_NAME || "test",
+    DB_NAME: process.env.DB_NAME || "pendulum",
     PORT: process.env.PORT || "3000",
   },
   containerRegistryURI: process.env.CONTAINER_URI as string,
@@ -46,17 +46,21 @@ const applicationStack = new ApplicationStack(app, "Pendulum-ApplicationStack", 
   eventsImageTag: process.env.EVENTS_IMAGE_TAG || "events-latest",
   jwtSecret: securityStack.jwtSecret,
   adminApiKey: securityStack.adminApiKey,
-  env: environment,
-});
-
-const frontendStack = new UserFrontendStack(app, "Pendulum-FrontendStack", {
   projectName: process.env.PROJECT_NAME || "pendulum-user-app",
   frontendBuildPath: process.env.FRONTEND_BUILD_PATH || "./dist",
-  apiEndpoint: `https://${applicationStack.loadBalancer.loadBalancerDnsName}`,
+  customDomainName: process.env.CUSTOM_DOMAIN_NAME || undefined,
+  certificateArn: process.env.CERTIFICATE_ARN || undefined,
   env: environment,
 });
 
+// const frontendStack = new UserFrontendStack(app, "Pendulum-FrontendStack", {
+//   projectName: process.env.PROJECT_NAME || "pendulum-user-app",
+//   frontendBuildPath: process.env.FRONTEND_BUILD_PATH || "./dist",
+//   apiEndpoint: process.env.API_ENDPOINT || applicationStack.apiUrl,
+//   env: environment,
+// });
+
+// frontendStack.addDependency(applicationStack);
 securityStack.addDependency(networkStack);
 databaseStack.addDependency(securityStack);
 applicationStack.addDependency(databaseStack);
-frontendStack.addDependency(applicationStack);
