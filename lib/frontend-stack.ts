@@ -118,12 +118,13 @@ export class UserFrontendStack extends cdk.Stack {
           originRequestPolicy: cf.OriginRequestPolicy.ALL_VIEWER,
           allowedMethods: cf.AllowedMethods.ALLOW_ALL,
         },
-        defaultRootObject: "index.html",
-        priceClass: cf.PriceClass.PRICE_CLASS_100,
-        enabled: true,
-        comment: `${props.projectName} Distribution (Powered by Pendulum)`,
-      }
-    );
+      },
+      httpVersion: cf.HttpVersion.HTTP1_1,
+      defaultRootObject: "index.html",
+      priceClass: cf.PriceClass.PRICE_CLASS_100,
+      enabled: true,
+      comment: `${props.projectName} Distribution (Powered by Pendulum)`,
+    });
 
     this.bucketDeployment = new s3deploy.BucketDeployment(
       this,
