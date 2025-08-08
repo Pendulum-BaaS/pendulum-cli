@@ -21,7 +21,7 @@ export class DatabaseStack extends cdk.Stack {
       description: "Pendulum DocumentDB cluster credentials",
       generateSecretString: {
         secretStringTemplate: JSON.stringify({
-          username: "admin",
+          username: "pendulumuser",
         }),
         generateStringKey: "password",
         excludeCharacters: '"@/\\:?#[]%&=+',
