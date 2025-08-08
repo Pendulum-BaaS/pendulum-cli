@@ -4,7 +4,6 @@ import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as secretsManager from "aws-cdk-lib/aws-secretsmanager";
-import { PrivateDnsNamespace } from "aws-cdk-lib/aws-servicediscovery";
 import { Construct } from "constructs";
 
 interface ApplicationStackProps extends cdk.StackProps {
