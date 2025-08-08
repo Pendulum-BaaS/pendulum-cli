@@ -5,9 +5,6 @@ import { DatabaseStack } from "../lib/database-stack";
 import { SecurityStack } from "../lib/security-stack";
 import { ApplicationStack } from "../lib/application-stack";
 import { UserFrontendStack } from "../lib/frontend-stack";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 const app = new cdk.App();
 
@@ -28,7 +25,7 @@ const projectName = process.env.PROJECT_NAME || generateRandomVPCPrefix();
 
 const environment = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
-  region: process.env.DEFAULT_REGION || "us-east-1",
+  region: process.env.CDK_DEFAULT_REGION || "us-east-1",
 };
 
 const networkStack = new NetworkStack(app, "Pendulum-NetworkStack", {
@@ -57,8 +54,8 @@ const applicationStack = new ApplicationStack(
     databaseEndpoint: databaseStack.clusterEndpoint,
     databaseSecret: databaseStack.secret,
     containerEnvironment: {
-      DB_NAME: process.env.DB_NAME || "test",
-      PORT: process.env.PORT || "3000",
+      DB_NAME: "pendulum",
+      PORT: "3000",
     },
     jwtSecret: securityStack.jwtSecret,
     adminApiKey: securityStack.adminApiKey,
