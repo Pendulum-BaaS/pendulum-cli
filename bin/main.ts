@@ -5,15 +5,12 @@ import { DatabaseStack } from "../lib/database-stack";
 import { SecurityStack } from "../lib/security-stack";
 import { ApplicationStack } from "../lib/application-stack";
 import { UserFrontendStack } from "../lib/frontend-stack";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 const app = new cdk.App();
 
 const environment = {
-  account: process.env.CDK_DEFAULT_ACCOUNT,
-  region: process.env.DEFAULT_REGION || "us-east-1",
+  account: app.node.tryGetContext("accountId"),
+  region: app.node.tryGetContext("region") || "us-east-1",
 };
 
 const networkStack = new NetworkStack(app, "Pendulum-NetworkStack", {
@@ -37,21 +34,18 @@ const applicationStack = new ApplicationStack(app, "Pendulum-ApplicationStack", 
   albSecurityGroup: securityStack.albSecurityGroup,
   databaseEndpoint: databaseStack.clusterEndpoint,
   databaseSecret: databaseStack.secret,
-  containerEnvironment: {
-    DB_NAME: process.env.DB_NAME || "test",
-    PORT: process.env.PORT || "3000",
-  },
-  containerRegistryURI: process.env.CONTAINER_URI as string,
-  appImageTag: process.env.APP_IMAGE_TAG || "app-latest",
-  eventsImageTag: process.env.EVENTS_IMAGE_TAG || "events-latest",
+  containerEnvironment: { DB_NAME: "pendulumdb", PORT: "3000" },
+  containerRegistryURI: "public.ecr.aws/m1y9r7r1/pendulum-ctr-repo", // need to make official ECR repo
+  appImageTag: "app-latest",
+  eventsImageTag: "events-latest",
   jwtSecret: securityStack.jwtSecret,
   adminApiKey: securityStack.adminApiKey,
   env: environment,
 });
 
 const frontendStack = new UserFrontendStack(app, "Pendulum-FrontendStack", {
-  projectName: process.env.PROJECT_NAME || "pendulum-user-app",
-  frontendBuildPath: process.env.FRONTEND_BUILD_PATH || "./dist",
+  projectName: app.node.tryGetContext("projectName") || "pendulum-user-app",
+  frontendBuildPath: app.node.tryGetContext("frontendBuildPath") || "./dist",
   apiEndpoint: `http://${applicationStack.loadBalancer.loadBalancerDnsName}`,
   env: environment,
 });

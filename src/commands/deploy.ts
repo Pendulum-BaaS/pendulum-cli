@@ -30,8 +30,8 @@ async function getAdminApiKey(region: string): Promise<string | null> {
 
     // Get the secret value
     const secretResult = await secretsManager
-    .getSecretValue({ SecretId: adminKeyExport.Value })
-    .promise();
+      .getSecretValue({ SecretId: adminKeyExport.Value })
+      .promise();
 
     if (!secretResult.SecretString) {
       spinner.fail("Admin API key secret has no value");
@@ -61,8 +61,8 @@ async function getLoadBalancerURL(region: string): Promise<string | null> {
     const cloudFormation = new AWS.CloudFormation();
 
     const stacks = await cloudFormation
-    .describeStacks({ StackName: 'Pendulum-ApplicationStack' })
-    .promise();
+      .describeStacks({ StackName: 'Pendulum-ApplicationStack' })
+      .promise();
 
     const stack = stacks.Stacks?.[0];
     const albOutput = stack?.Outputs?.find(output =>
@@ -105,11 +105,6 @@ async function bootstrapCDK(
       ["cdk", "bootstrap", `aws://${accountId}/${region}`, "--ci"],
       {
         cwd: cliPath,
-        env: {
-          ...process.env,
-          CDK_DEFAULT_ACCOUNT: accountId,
-          CDK_DEFAULT_REGION: region,
-        },
         stdio: ["inherit", "ignore", "inherit"],
       }
     );
@@ -145,17 +140,14 @@ async function deployBackendStacks(
         "never",
         "--outputs-file",
         "backend-outputs.json",
-        "--ci",
+        "--context", `accountId=${accountId}`,
+        "--context", `region=${region}`,
       ],
       {
-      cwd: cliPath,
-      env: {
-        ...process.env,
-        CDK_DEFAULT_ACCOUNT: accountId,
-        CDK_DEFAULT_REGION: region,
-      },
-      stdio: ["inherit", "ignore", "inherit"],
-    });
+        cwd: cliPath,
+        stdio: ["inherit", "ignore", "inherit"],
+      }
+    );
 
     spinner.succeed("Pendulum backend stacks deployed successfully");
   } catch (error) {
@@ -183,17 +175,13 @@ async function deployFrontendStack(
         "never",
         "--outputs-file",
         "frontend-outputs.json",
-        "--ci",
+        "--context", `accountId=${accountId}`,
+        "--context", `region=${region}`,
+        "--context", `projectName=${frontendConfig.projectName}`,
+        "--context", `frontendBuildPath=${frontendConfig.frontendBuildPath}`,
       ],
       {
         cwd: cliPath,
-        env: {
-          ...process.env,
-          CDK_DEFAULT_ACCOUNT: accountId,
-          CDK_DEFAULT_REGION: region,
-          PROJECT_NAME: frontendConfig.projectName,
-          FRONTEND_BUILD_PATH: frontendConfig.frontendBuildPath,
-        },
         stdio: ["inherit", "ignore", "inherit"],
       });
 
@@ -218,8 +206,7 @@ async function getFrontendConfigration() {
         if (!input.trim()) {
           return "project name is required";
         } else if (!/^[a-z0-9-_]+$/i.test(input)) { // checks that input only contains alphanumeric characters, hyphens, and underscores
-          return "Project name can only contain letters, numbers, hyphens, " +
-            "and underscores";
+          return "Project name can only contain letters, numbers, hyphens, and underscores";
         } else {
           return true;
         }
@@ -379,9 +366,7 @@ export async function DeployCommand() {
     console.log("- Ensure AWS credentials are configured (aws configure)");
     console.log("- Verify your AWS account ID and region are correct");
     console.log("- Check that you have sufficient AWS permissions");
-    console.log(
-      "- Ensure AWS CDK is installed globally: npm install -g aws-cdk"
-    );
+    console.log("- Ensure AWS CDK is installed globally: npm install -g aws-cdk");
     console.log("- Ensure Docker is running (required for CDK deployment)");
     console.log("- Verify your frontend build path is correct");
     console.log("- Ensure your frontend project was built successfully");

@@ -1,11 +1,8 @@
-import dotenv from "dotenv";
 import * as cdk from "aws-cdk-lib";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as secretsManager from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 import { DatabaseCluster } from "aws-cdk-lib/aws-docdb";
-
-dotenv.config();
 
 interface DatabaseStackProps extends cdk.StackProps {
   vpc: ec2.Vpc;
@@ -23,9 +20,7 @@ export class DatabaseStack extends cdk.Stack {
     this.secret = new secretsManager.Secret(this, "DatabaseSecret", {
       description: "Pendulum DocumentDB cluster credentials",
       generateSecretString: {
-        secretStringTemplate: JSON.stringify({
-          username: process.env.DB_USER || "mongouser"
-        }),
+        secretStringTemplate: JSON.stringify({ username: "pendulumuser" }),
         generateStringKey: "password",
         excludeCharacters: '"@/\\:?#[]%&=+',
         passwordLength: 16,
