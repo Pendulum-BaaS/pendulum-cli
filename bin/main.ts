@@ -11,12 +11,28 @@ dotenv.config();
 
 const app = new cdk.App();
 
+const generateRandomVPCPrefix = () => {
+  const charset =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let randomStr = "";
+
+  for (let i = 0; i < 10; i++) {
+    const randIdx = Math.floor(Math.random() * charset.length);
+    randomStr += charset[randIdx];
+  }
+
+  return randomStr;
+};
+
+const projectName = process.env.PROJECT_NAME || generateRandomVPCPrefix();
+
 const environment = {
   account: process.env.CDK_DEFAULT_ACCOUNT,
   region: process.env.DEFAULT_REGION || "us-east-1",
 };
 
 const networkStack = new NetworkStack(app, "Pendulum-NetworkStack", {
+  projectName,
   env: environment,
 });
 
@@ -31,23 +47,24 @@ const databaseStack = new DatabaseStack(app, "Pendulum-DatabaseStack", {
   env: environment,
 });
 
-const applicationStack = new ApplicationStack(app, "Pendulum-ApplicationStack", {
-  vpc: networkStack.vpc,
-  ecsSecurityGroup: securityStack.ecsSecurityGroup,
-  albSecurityGroup: securityStack.albSecurityGroup,
-  databaseEndpoint: databaseStack.clusterEndpoint,
-  databaseSecret: databaseStack.secret,
-  containerEnvironment: {
-    DB_NAME: process.env.DB_NAME || "test",
-    PORT: process.env.PORT || "3000",
+const applicationStack = new ApplicationStack(
+  app,
+  "Pendulum-ApplicationStack",
+  {
+    vpc: networkStack.vpc,
+    ecsSecurityGroup: securityStack.ecsSecurityGroup,
+    albSecurityGroup: securityStack.albSecurityGroup,
+    databaseEndpoint: databaseStack.clusterEndpoint,
+    databaseSecret: databaseStack.secret,
+    containerEnvironment: {
+      DB_NAME: process.env.DB_NAME || "test",
+      PORT: process.env.PORT || "3000",
+    },
+    jwtSecret: securityStack.jwtSecret,
+    adminApiKey: securityStack.adminApiKey,
+    env: environment,
   },
-  containerRegistryURI: process.env.CONTAINER_URI as string,
-  appImageTag: process.env.APP_IMAGE_TAG || "app-latest",
-  eventsImageTag: process.env.EVENTS_IMAGE_TAG || "events-latest",
-  jwtSecret: securityStack.jwtSecret,
-  adminApiKey: securityStack.adminApiKey,
-  env: environment,
-});
+);
 
 const frontendStack = new UserFrontendStack(app, "Pendulum-FrontendStack", {
   projectName: process.env.PROJECT_NAME || "pendulum-user-app",

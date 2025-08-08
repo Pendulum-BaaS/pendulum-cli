@@ -6,7 +6,7 @@ import { existsSync } from "fs";
 import { runCommand } from "../utils/runCommand";
 import { checkAWSConfiguration } from "../utils/checkAWSConfiguration";
 import { getAWSConfiguration } from "../utils/getAWSConfiguration";
-import AWS from 'aws-sdk';
+import AWS from "aws-sdk";
 
 async function getAdminApiKey(region: string): Promise<string | null> {
   const spinner = ora("Retrieving admin API key...").start();
@@ -19,19 +19,21 @@ async function getAdminApiKey(region: string): Promise<string | null> {
     const cloudFormation = new AWS.CloudFormation();
     const exports = await cloudFormation.listExports().promise();
 
-    const adminKeyExport = exports.Exports?.find(exp => 
-      exp.Name === 'PendulumAdminApiKeyArn'
+    const adminKeyExport = exports.Exports?.find(
+      (exp) => exp.Name === "PendulumAdminApiKeyArn",
     );
 
     if (!adminKeyExport?.Value) {
-      spinner.fail("Could not find admin API key ARN in CloudFormation exports");
+      spinner.fail(
+        "Could not find admin API key ARN in CloudFormation exports",
+      );
       return null;
     }
 
     // Get the secret value
     const secretResult = await secretsManager
-    .getSecretValue({ SecretId: adminKeyExport.Value })
-    .promise();
+      .getSecretValue({ SecretId: adminKeyExport.Value })
+      .promise();
 
     if (!secretResult.SecretString) {
       spinner.fail("Admin API key secret has no value");
@@ -39,18 +41,22 @@ async function getAdminApiKey(region: string): Promise<string | null> {
     }
 
     const secretData = JSON.parse(secretResult.SecretString);
-    const adminKey = secretData['admin-key'];
+    const adminKey = secretData["admin-key"];
 
     if (!adminKey) {
       spinner.fail("Admin key not found in secret");
       return null;
     }
 
-    spinner.succeed(("Admin API key retrieved"));
+    spinner.succeed("Admin API key retrieved");
     return `ak_${adminKey}`;
   } catch (error) {
     spinner.fail("Failed to retrieve admin API key");
-    console.error(chalk.yellow("Warning: Could not retrieve admin key. Check AWS permissions."));
+    console.error(
+      chalk.yellow(
+        "Warning: Could not retrieve admin key. Check AWS permissions.",
+      ),
+    );
     return null;
   }
 }
@@ -61,12 +67,12 @@ async function getLoadBalancerURL(region: string): Promise<string | null> {
     const cloudFormation = new AWS.CloudFormation();
 
     const stacks = await cloudFormation
-    .describeStacks({ StackName: 'Pendulum-ApplicationStack' })
-    .promise();
+      .describeStacks({ StackName: "Pendulum-ApplicationStack" })
+      .promise();
 
     const stack = stacks.Stacks?.[0];
-    const albOutput = stack?.Outputs?.find(output =>
-      output.OutputKey === 'LoadBalancerURL'
+    const albOutput = stack?.Outputs?.find(
+      (output) => output.OutputKey === "LoadBalancerURL",
     );
 
     return albOutput?.OutputValue || null;
@@ -111,7 +117,7 @@ async function bootstrapCDK(
           CDK_DEFAULT_REGION: region,
         },
         stdio: ["inherit", "ignore", "inherit"],
-      }
+      },
     );
 
     spinner.succeed("AWS CDK environment bootstrapped");
@@ -124,6 +130,7 @@ async function deployBackendStacks(
   cliPath: string,
   accountId: string,
   region: string,
+  projectName: string,
 ) {
   const spinner = ora("Deploying Pendulum backend stacks to AWS...").start();
 
@@ -148,14 +155,16 @@ async function deployBackendStacks(
         "--ci",
       ],
       {
-      cwd: cliPath,
-      env: {
-        ...process.env,
-        CDK_DEFAULT_ACCOUNT: accountId,
-        CDK_DEFAULT_REGION: region,
+        cwd: cliPath,
+        env: {
+          ...process.env,
+          CDK_DEFAULT_ACCOUNT: accountId,
+          CDK_DEFAULT_REGION: region,
+          PROJECT_NAME: projectName,
+        },
+        stdio: ["inherit", "ignore", "inherit"],
       },
-      stdio: ["inherit", "ignore", "inherit"],
-    });
+    );
 
     spinner.succeed("Pendulum backend stacks deployed successfully");
   } catch (error) {
@@ -195,7 +204,8 @@ async function deployFrontendStack(
           FRONTEND_BUILD_PATH: frontendConfig.frontendBuildPath,
         },
         stdio: ["inherit", "ignore", "inherit"],
-      });
+      },
+    );
 
     spinner.succeed("Frontend stack deployed successfully");
   } catch (error) {
@@ -217,9 +227,12 @@ async function getFrontendConfigration() {
       validate: (input: string) => {
         if (!input.trim()) {
           return "project name is required";
-        } else if (!/^[a-z0-9-_]+$/i.test(input)) { // checks that input only contains alphanumeric characters, hyphens, and underscores
-          return "Project name can only contain letters, numbers, hyphens, " +
-            "and underscores";
+        } else if (!/^[a-z0-9-_]+$/i.test(input)) {
+          // checks that input only contains alphanumeric characters, hyphens, and underscores
+          return (
+            "Project name can only contain letters, numbers, hyphens, " +
+            "and underscores"
+          );
         } else {
           return true;
         }
@@ -245,7 +258,7 @@ async function getFrontendConfigration() {
 
   frontendConfig.frontendBuildPath = resolve(
     process.cwd(),
-    frontendConfig.frontendBuildPath
+    frontendConfig.frontendBuildPath,
   );
 
   return frontendConfig;
@@ -302,7 +315,7 @@ export async function DeployCommand() {
   ];
 
   console.log(chalk.blue("\nDeployment Summary:"));
-  deploymentSummary.forEach(item => console.log(item));
+  deploymentSummary.forEach((item) => console.log(item));
 
   const { confirmDeployment } = await inquirer.prompt([
     {
@@ -322,12 +335,17 @@ export async function DeployCommand() {
     await checkAWSConfiguration();
     await installCDKDependencies(cliPath);
     await bootstrapCDK(cliPath, awsAccountId.trim(), awsRegion);
-    await deployBackendStacks(cliPath, awsAccountId.trim(), awsRegion);
+    await deployBackendStacks(
+      cliPath,
+      awsAccountId.trim(),
+      awsRegion,
+      frontendConfig.projectName,
+    );
     await deployFrontendStack(
       cliPath,
       awsAccountId.trim(),
       awsRegion,
-      frontendConfig
+      frontendConfig,
     );
 
     const adminKey = await getAdminApiKey(awsRegion);
@@ -340,13 +358,19 @@ export async function DeployCommand() {
 
     if (loadBalancerURL) {
       console.log(`   Backend API: ${loadBalancerURL}`);
-      console.log(`   Events url: ${loadBalancerURL.replace(':3000', ':8080')}/events`);
+      console.log(
+        `   Events url: ${loadBalancerURL.replace(":3000", ":8080")}/events`,
+      );
     }
 
     if (adminKey) {
       console.log(chalk.cyan("\n🔑 Admin Dashboard Access:"));
       console.log(chalk.bgBlack(chalk.white(`   Admin Key: ${adminKey}`)));
-      console.log(chalk.yellow("   ⚠️  Save this key securely - you'll need it to access the dashboard!"));
+      console.log(
+        chalk.yellow(
+          "   ⚠️  Save this key securely - you'll need it to access the dashboard!",
+        ),
+      );
     }
 
     console.log(chalk.blue("\n🚀 Access Your Deployment:"));
@@ -363,16 +387,21 @@ export async function DeployCommand() {
       console.log("1. Check AWS CloudFormation console for your stack outputs");
       console.log("2. Your frontend is live and connected to your backend!");
       console.log("3. API calls to /api/* & /auth/* are automatically proxied");
-      console.log("4. Check AWS Secrets Manager for 'AdminApiKey' to access dashboard");
+      console.log(
+        "4. Check AWS Secrets Manager for 'AdminApiKey' to access dashboard",
+      );
     }
     console.log("");
     console.log(chalk.gray("To update deployment, rerun 'pendulum deploy'"));
 
     if (!adminKey) {
-      console.log(chalk.yellow("\n⚠️  Admin key could not be retrieved automatically."));
-      console.log("Check AWS Secrets Manager in your console for 'AdminApiKey'");
+      console.log(
+        chalk.yellow("\n⚠️  Admin key could not be retrieved automatically."),
+      );
+      console.log(
+        "Check AWS Secrets Manager in your console for 'AdminApiKey'",
+      );
     }
-
   } catch (error) {
     console.error(chalk.red("Deployment failed:"), error);
     console.log(chalk.yellow("\nTroubleshooting tips:"));
@@ -380,11 +409,11 @@ export async function DeployCommand() {
     console.log("- Verify your AWS account ID and region are correct");
     console.log("- Check that you have sufficient AWS permissions");
     console.log(
-      "- Ensure AWS CDK is installed globally: npm install -g aws-cdk"
+      "- Ensure AWS CDK is installed globally: npm install -g aws-cdk",
     );
     console.log("- Ensure Docker is running (required for CDK deployment)");
     console.log("- Verify your frontend build path is correct");
     console.log("- Ensure your frontend project was built successfully");
     process.exit(1);
   }
-};
+}

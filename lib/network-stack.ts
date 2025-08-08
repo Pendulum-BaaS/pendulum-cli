@@ -3,10 +3,14 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { Vpc } from "aws-cdk-lib/aws-ec2";
 import { Construct } from "constructs";
 
+interface NetworkStackProps extends cdk.StackProps {
+  projectName: string;
+}
+
 export class NetworkStack extends cdk.Stack {
   public readonly vpc: Vpc;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: NetworkStackProps) {
     super(scope, id, props);
 
     /*
@@ -20,7 +24,7 @@ export class NetworkStack extends cdk.Stack {
 				- private 'db' subnet for DocumentDBs with no egress allowed
 			- 1 NAT Gateway automatically placed in one of the public subnets
 	 */
-    this.vpc = new Vpc(this, "VPC", {
+    this.vpc = new Vpc(this, `${props.projectName}-VPC`, {
       subnetConfiguration: [
         {
           cidrMask: 24,
