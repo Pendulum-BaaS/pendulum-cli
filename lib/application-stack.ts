@@ -13,9 +13,6 @@ interface ApplicationStackProps extends cdk.StackProps {
   databaseEndpoint: string;
   databaseSecret: secretsManager.Secret;
   containerEnvironment: Record<string, string>;
-  containerRegistryURI: string;
-  appImageTag: string;
-  eventsImageTag: string;
   jwtSecret: secretsManager.Secret;
   adminApiKey: secretsManager.Secret;
 }
@@ -83,7 +80,7 @@ export class ApplicationStack extends cdk.Stack {
     // add app container
     const appContainer = appTaskDef.addContainer("AppContainer", {
       image: ecs.ContainerImage.fromRegistry(
-        `${props.containerRegistryURI}:${props.appImageTag}`,
+        "public.ecr.aws/f6o9b2p8/pendulum/core:app-latest",
       ),
       environment: {
         ...props.containerEnvironment,
@@ -92,7 +89,7 @@ export class ApplicationStack extends cdk.Stack {
         EVENTS_SERVICE_URL: "http://events:8080",
         PORT: "3000",
         NODE_ENV: "production",
-        DB_NAME: "pendulum-test",
+        DB_NAME: "pendulum",
       },
       secrets: {
         DB_USER: ecs.Secret.fromSecretsManager(
@@ -141,7 +138,7 @@ export class ApplicationStack extends cdk.Stack {
     // add events container
     const eventsContainer = eventsTaskDef.addContainer("EventsContainer", {
       image: ecs.ContainerImage.fromRegistry(
-        `${props.containerRegistryURI}:${props.eventsImageTag}`,
+        "public.ecr.aws/f6o9b2p8/pendulum/core:events-latest"
       ),
       environment: {
         ...props.containerEnvironment,
