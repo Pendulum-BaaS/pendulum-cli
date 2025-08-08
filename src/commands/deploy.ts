@@ -82,7 +82,7 @@ async function installCDKDependencies(cliPath: string) {
   try {
     await runCommand("npm", ["install"], {
       cwd: cliPath,
-      stdio: ["inherit", "ignore", "inherit"],
+      stdio: ["inherit", "pipe", "pipe"],
     });
 
     spinner.succeed("CDK dependencies installed");
@@ -105,7 +105,7 @@ async function bootstrapCDK(
       ["cdk", "bootstrap", `aws://${accountId}/${region}`, "--ci"],
       {
         cwd: cliPath,
-        stdio: ["inherit", "ignore", "inherit"],
+        stdio: ["inherit", "pipe", "pipe"],
       }
     );
 
@@ -145,7 +145,7 @@ async function deployBackendStacks(
       ],
       {
         cwd: cliPath,
-        stdio: ["inherit", "ignore", "inherit"],
+        stdio: ["inherit", "pipe", "pipe"],
       }
     );
 
@@ -182,7 +182,7 @@ async function deployFrontendStack(
       ],
       {
         cwd: cliPath,
-        stdio: ["inherit", "ignore", "inherit"],
+        stdio: ["inherit", "pipe", "pipe"],
       });
 
     spinner.succeed("Frontend stack deployed successfully");
