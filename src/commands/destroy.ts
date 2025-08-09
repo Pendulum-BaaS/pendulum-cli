@@ -19,6 +19,8 @@ async function listAllStacks() {
       "Pendulum-NetworkStack",
     ];
 
+    spinner.succeed("Pendulum stacks identified.");
+
     return potentialStacks;
   } catch (error: any) {
     spinner.fail("Failed to connect to AWS");
@@ -33,7 +35,7 @@ async function destroyStacks(
 ) {
   console.log(chalk.blue("\nDestroy Info:"));
   console.log(chalk.gray(`  Account: ${accountId}`));
-  console.log(chalk.gray(`  Region: ${region}`));
+  console.log(chalk.gray(`  Region: ${region}\n`));
 
   for (const stack of stacks) {
     try {
@@ -77,9 +79,11 @@ async function destroyStacks(
       );
 
       console.log(chalk.green(`Successfully destroyed: ${stack}`));
+      console.log("");
     } catch (error: any) {
       console.log(chalk.yellow(`Couldn't destroy ${stack}: ${error.message}`));
       console.log(chalk.gray("This might be normal if stack doesn't exist"));
+      console.log("");
     }
   }
 }
