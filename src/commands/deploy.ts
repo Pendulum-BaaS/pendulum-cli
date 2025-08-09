@@ -49,7 +49,7 @@ async function getAdminApiKey(region: string): Promise<string | null> {
     }
 
     spinner.succeed("Admin API key retrieved");
-    return `ak_${adminKey}`;
+    return `${adminKey}`;
   } catch (error) {
     spinner.fail("Failed to retrieve admin API key");
     console.error(
@@ -78,6 +78,27 @@ async function getLoadBalancerURL(region: string): Promise<string | null> {
     return albOutput?.OutputValue || null;
   } catch (error) {
     console.warn("Could not retrieve load balancer URL");
+    return null;
+  }
+}
+
+async function getCloudFrontURL(region: string): Promise<string | null> {
+  try {
+    AWS.config.update({ region });
+    const cloudFormation = new AWS.CloudFormation();
+
+    const stacks = await cloudFormation
+      .describeStacks({ StackName: "Pendulum-FrontendStack" })
+      .promise();
+
+    const stack = stacks.Stacks?.[0];
+    const cloudFrontOutput = stack?.Outputs?.find(
+      (output) => output.OutputKey === "FrontendUrl",
+    );
+
+    return cloudFrontOutput?.OutputValue || null;
+  } catch (error) {
+    console.warn("Could not retrieve CloudFront URL");
     return null;
   }
 }
@@ -350,47 +371,89 @@ export async function DeployCommand() {
 
     const adminKey = await getAdminApiKey(awsRegion);
     const loadBalancerURL = await getLoadBalancerURL(awsRegion);
+    const cloudFrontURL = await getCloudFrontURL(awsRegion);
 
     console.log(chalk.green("\n🎉 Pendulum successfully deployed to AWS!"));
     console.log(chalk.blue("\n📋 Deployment Information:"));
-    console.log(` Account: ${awsAccountId.trim()}`);
-    console.log(` Region: ${awsRegion}`);
+    console.log(chalk.white(`  Account: ${chalk.cyan(awsAccountId.trim())}`));
+    console.log(chalk.white(`  Region: ${chalk.cyan(awsRegion)}`));
 
     if (loadBalancerURL) {
-      console.log(`   Backend API: ${loadBalancerURL}`);
       console.log(
-        `   Events url: ${loadBalancerURL.replace(":3000", ":8080")}/events`,
+        chalk.white(
+          `  Backend API: ${chalk.green(`${loadBalancerURL}/pendulum`)}`,
+        ),
+      );
+      console.log(
+        chalk.white(
+          `  Events URL: ${chalk.green(`${loadBalancerURL}/pendulum-events`)}`,
+        ),
       );
     }
 
     if (adminKey) {
       console.log(chalk.cyan("\n🔑 Admin Dashboard Access:"));
-      console.log(chalk.bgBlack(chalk.white(`   Admin Key: ${adminKey}`)));
+      console.log(chalk.white(`  ${chalk.magenta(`${cloudFrontURL}/admin/`)}`));
+      console.log("");
+      console.log(chalk.white(`  Admin Key: ${chalk.yellow(adminKey)}`));
       console.log(
         chalk.yellow(
-          "   ⚠️  Save this key securely - you'll need it to access the dashboard!",
+          "  ⚠️  Save this key securely - you'll need it to access the dashboard!",
         ),
       );
     }
 
     console.log(chalk.blue("\n🚀 Access Your Deployment:"));
-    console.log(" Backend: Check CloudFormation outputs for ALB URL");
-    console.log(" Frontend: Check CloudFormation outputs for CloudFront URL");
+    if (cloudFrontURL) {
+      console.log(chalk.white(`  ${chalk.green(cloudFrontURL)}`));
+    } else {
+      console.log(
+        chalk.yellow(
+          "  Frontend: Check CloudFormation outputs for CloudFront URL",
+        ),
+      );
+    }
+
     console.log("");
     console.log(chalk.blue("Next Steps:"));
     if (adminKey) {
-      console.log("1. Save your admin key from above");
-      console.log("2. Your frontend is live and connected to your backend!");
-      console.log("3. Access the dashboard using your admin key");
-      console.log("4. API calls to /api/* & /auth/* are automatically proxied");
-    } else {
-      console.log("1. Check AWS CloudFormation console for your stack outputs");
-      console.log("2. Your frontend is live and connected to your backend!");
-      console.log("3. API calls to /api/* & /auth/* are automatically proxied");
+      console.log(chalk.white("  1. Save your admin key from above"));
       console.log(
-        "4. Check AWS Secrets Manager for 'AdminApiKey' to access dashboard",
+        chalk.white(
+          "  2. Your frontend is live and connected to your backend!",
+        ),
+      );
+      console.log(
+        chalk.white("  3. Access the dashboard using your admin key"),
+      );
+      console.log(
+        chalk.white(
+          "  4. API calls to /api/* & /auth/* are automatically proxied",
+        ),
+      );
+    } else {
+      console.log(
+        chalk.white(
+          "  1. Check AWS CloudFormation console for your stack outputs",
+        ),
+      );
+      console.log(
+        chalk.white(
+          "  2. Your frontend is live and connected to your backend!",
+        ),
+      );
+      console.log(
+        chalk.white(
+          "  3. API calls to /api/* & /auth/* are automatically proxied",
+        ),
+      );
+      console.log(
+        chalk.white(
+          "  4. Check AWS Secrets Manager for 'AdminApiKey' to access dashboard",
+        ),
       );
     }
+
     console.log("");
     console.log(chalk.gray("To update deployment, rerun 'pendulum deploy'"));
 
@@ -399,21 +462,35 @@ export async function DeployCommand() {
         chalk.yellow("\n⚠️  Admin key could not be retrieved automatically."),
       );
       console.log(
-        "Check AWS Secrets Manager in your console for 'AdminApiKey'",
+        chalk.gray(
+          "Check AWS Secrets Manager in your console for 'AdminApiKey'",
+        ),
       );
     }
   } catch (error) {
     console.error(chalk.red("Deployment failed:"), error);
     console.log(chalk.yellow("\nTroubleshooting tips:"));
-    console.log("- Ensure AWS credentials are configured (aws configure)");
-    console.log("- Verify your AWS account ID and region are correct");
-    console.log("- Check that you have sufficient AWS permissions");
     console.log(
-      "- Ensure AWS CDK is installed globally: npm install -g aws-cdk",
+      chalk.white("  • Ensure AWS credentials are configured (aws configure)"),
     );
-    console.log("- Ensure Docker is running (required for CDK deployment)");
-    console.log("- Verify your frontend build path is correct");
-    console.log("- Ensure your frontend project was built successfully");
+    console.log(
+      chalk.white("  • Verify your AWS account ID and region are correct"),
+    );
+    console.log(
+      chalk.white("  • Check that you have sufficient AWS permissions"),
+    );
+    console.log(
+      chalk.white(
+        "  • Ensure AWS CDK is installed globally: npm install -g aws-cdk",
+      ),
+    );
+    console.log(
+      chalk.white("  • Ensure Docker is running (required for CDK deployment)"),
+    );
+    console.log(chalk.white("  • Verify your frontend build path is correct"));
+    console.log(
+      chalk.white("  • Ensure your frontend project was built successfully"),
+    );
     process.exit(1);
   }
 }
