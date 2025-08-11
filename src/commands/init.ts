@@ -52,12 +52,12 @@ async function installPendulumDependencies(projectPath: string) {
   const spinner = ora("Installing Pendulum dependencies...").start();
 
   try {
-    spinner.text = "installing @pendulum/sdk";
+    spinner.text = "installing @pendulum-baas/sdk";
     await runCommand("npm", ["install", "@pendulum-baas/sdk"], {
       cwd: projectPath,
     });
 
-    spinner.text = "installing @pendulum/core";
+    spinner.text = "installing @pendulum-baas/core";
     await runCommand("npm", ["install", "@pendulum-baas/core"], {
       cwd: projectPath,
     });
@@ -82,9 +82,9 @@ async function addNpmScripts(projectPath: string) {
   }
 
   currentPackageJsonObj.scripts["pendulum-backend:start"] =
-    "cd node_modules/@pendulum/core && docker compose start";
+    "cd node_modules/@pendulum-baas/core && docker compose start";
   currentPackageJsonObj.scripts["pendulum-backend:stop"] =
-    "cd node_modules/@pendulum/core && docker compose stop";
+    "cd node_modules/@pendulum-baas/core && docker compose stop";
 
   await writeFile(
     resolve(projectPath, "package.json"),
