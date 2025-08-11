@@ -1,10 +1,17 @@
 {
   "name": "@pendulum-baas/cli",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "main": "dist/index.js",
   "bin": {
     "pendulum": "dist/index.js"
   },
+  "files": [
+    "dist/**/*",
+    "lib/**/*",
+    "cdk.json",
+    "package.json",
+    "package-lock.json"
+  ],
   "scripts": {
     "build": "rm -rf ./dist && tsc && npm run make",
     "make": "chmod +x ./dist/index.js",
@@ -15,9 +22,6 @@
     "destroy": "cdk destroy --all",
     "prepublishOnly": "npm run build"
   },
-  "files": [
-    "dist/**/*"
-  ],
   "devDependencies": {
     "@types/aws-sdk": "^0.0.42",
     "@types/jest": "^29.5.14",

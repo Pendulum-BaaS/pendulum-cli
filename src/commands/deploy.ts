@@ -297,6 +297,10 @@ async function getFrontendConfigration() {
 */
 
 export async function DeployCommand() {
+  console.log(chalk.blue("Deploying Pendulum to AWS..."));
+
+  const cliPath = resolve(__dirname, "../..");
+
   const { proceed } = await inquirer.prompt([
     {
       type: "confirm",
@@ -310,8 +314,6 @@ export async function DeployCommand() {
     console.log(chalk.yellow("Deployment cancelled."));
     return;
   }
-
-  console.log(chalk.blue("Deploying Pendulum to AWS..."));
 
   const { awsAccountId, awsRegion } = await getAWSConfiguration();
   const frontendConfig = await getFrontendConfigration();
