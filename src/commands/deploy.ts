@@ -297,20 +297,6 @@ async function getFrontendConfigration() {
 */
 
 export async function DeployCommand() {
-  console.log(chalk.blue("Deploying Pendulum to AWS..."));
-
-  const cliPath = resolve(__dirname, "../..");
-
-  try {
-    const fs = await import("fs/promises");
-    await fs.access(resolve(cliPath, "package.json"));
-    await fs.access(resolve(cliPath, "lib"));
-  } catch (error) {
-    console.log(chalk.red("Pendulum project not found!"));
-    console.log(chalk.yellow("Run 'pendulum init' to set up your project."));
-    return;
-  }
-
   const { proceed } = await inquirer.prompt([
     {
       type: "confirm",
@@ -324,6 +310,8 @@ export async function DeployCommand() {
     console.log(chalk.yellow("Deployment cancelled."));
     return;
   }
+
+  console.log(chalk.blue("Deploying Pendulum to AWS..."));
 
   const { awsAccountId, awsRegion } = await getAWSConfiguration();
   const frontendConfig = await getFrontendConfigration();
