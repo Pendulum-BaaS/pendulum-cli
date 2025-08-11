@@ -1,5 +1,5 @@
 {
-  "name": "@pendulum/cli",
+  "name": "@pendulum-baas/cli",
   "version": "1.0.0",
   "main": "dist/index.js",
   "bin": {
@@ -12,10 +12,11 @@
     "test": "jest",
     "cdk": "cdk",
     "deploy": "cdk deploy --all",
-    "destroy": "cdk destroy --all"
+    "destroy": "cdk destroy --all",
+    "prepublishOnly": "npm run build"
   },
   "files": [
-    "dist"
+    "dist/**/*"
   ],
   "devDependencies": {
     "@types/aws-sdk": "^0.0.42",
