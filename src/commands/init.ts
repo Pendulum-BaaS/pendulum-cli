@@ -37,9 +37,11 @@ export async function InitCommand() {
     console.log("   🧑‍💻 apiUrl: http://localhost:3000");
     console.log("   🔁 eventsUrl: http://localhost:8080/events\n");
     console.log(
-      chalk.gray("Initialize your frontend however you like, then use:"),
+      chalk.gray(
+        "Initialize your frontend however you like, the SDK is already installed for you with:",
+      ),
     );
-    console.log(chalk.gray("    npm install @pendulum/sdk"));
+    console.log(chalk.gray("    npm install @pendulum-baas/sdk"));
   } catch (error) {
     console.error(chalk.red("Failed to initialize project:"), error);
     process.exit(1);
@@ -51,12 +53,12 @@ async function installPendulumDependencies(projectPath: string) {
 
   try {
     spinner.text = "installing @pendulum/sdk";
-    await runCommand("npm", ["install", "@pendulum/sdk"], {
+    await runCommand("npm", ["install", "@pendulum-baas/sdk"], {
       cwd: projectPath,
     });
 
     spinner.text = "installing @pendulum/core";
-    await runCommand("npm", ["install", "@pendulum/core"], {
+    await runCommand("npm", ["install", "@pendulum-baas/core"], {
       cwd: projectPath,
     });
 

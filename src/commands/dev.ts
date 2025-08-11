@@ -12,7 +12,7 @@ export async function DevCommand() {
   const corePackagePath = resolve(
     projectPath,
     "node_modules",
-    "@pendulum",
+    "@pendulum-baas",
     "core",
   );
   const coreEnvPath = join(corePackagePath, ".env");
@@ -33,14 +33,13 @@ export async function DevCommand() {
     console.log(chalk.blue("    eventsUrl: http://localhost:8080/events"));
     console.log("");
     console.log(
-      chalk.blue("To connect your frontend to the Pendulum backend, run:"),
-    );
-    console.log(chalk.blue("    npm install @pendulum/sdk"));
-    console.log(
-      chalk.blue("then import it into your top-level frontend file with:"),
+      chalk.blue("To connect your frontend to the Pendulum backend:"),
     );
     console.log(
-      chalk.blue("    import { PendulumClient } from '@pendulum/sdk`;"),
+      chalk.blue("import it into your top-level frontend file with:"),
+    );
+    console.log(
+      chalk.blue("    import { PendulumClient } from '@pendulum-baas/sdk`;"),
     );
     console.log("");
     console.log(
