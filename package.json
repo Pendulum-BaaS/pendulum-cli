@@ -1,6 +1,6 @@
 {
   "name": "@pendulum-baas/cli",
-  "version": "1.0.4",
+  "version": "1.0.6",
   "main": "dist/index.js",
   "bin": {
     "pendulum": "dist/index.js"
@@ -8,12 +8,14 @@
   "files": [
     "dist/**/*",
     "lib/**/*",
+    "bin/**/*",
     "cdk.json",
     "package.json",
     "package-lock.json"
   ],
   "scripts": {
-    "build": "rm -rf ./dist && tsc && npm run make",
+    "build": "rm -rf ./dist && tsc && npm run make && npm run build:cdk",
+    "build:cdk": "tsc bin/main.ts --outDir . --target es2020 --module commonjs",
     "make": "chmod +x ./dist/index.js",
     "dev": "tsc --watch",
     "test": "jest",
