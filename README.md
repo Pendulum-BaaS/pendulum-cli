@@ -98,15 +98,6 @@ Your AWS user/role needs permissions for:
 - S3 (CDK assets)
 - Secrets Manager (credentials)
 
-## Project Structure
-After running `pendulum init`:
-your-project/
-├── package.json                # Updated with Pendulum scripts
-├── node_modules/
-│   ├── @pendulum-baas/core/    # Backend services
-│   └── @pendulum-baas/sdk/     # Client library
-└── .env                        # Optional environment config
-
 # Environment Variables
 ## Local Development (.env in your project root directory)
 ```env
