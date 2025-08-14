@@ -135,25 +135,6 @@ Added to your package.json by pendulum init:
 }
 ```
 
-## AWS Infrastructure
-The CLI deploys a complete stack:
-┌─────────────────┐    ┌─────────────────┐
-│   CloudFront    │    │       ALB       │
-│  (Frontend CDN) │    │ (Load Balancer) │
-└─────────────────┘    └─────────────────┘
-                                │
-                        ┌─────────────────┐
-                        │   ECS Cluster   │
-                        │ ┌─────┐ ┌─────┐ │
-                        │ │ App │ │Event│ │
-                        │ └─────┘ └─────┘ │
-                        └─────────────────┘
-                                │
-                        ┌─────────────────┐
-                        │   DocumentDB    │
-                        │    Cluster      │
-                        └─────────────────┘
-
 ## Output Information
 After successful deployment, you'll receive:
 
