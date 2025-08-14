@@ -1,111 +1,220 @@
-# Welcome to your CDK TypeScript project
-
-This is a blank project for CDK development with TypeScript.
-
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
-
-## Useful commands
-
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
-
 # Pendulum CLI
+Command-line interface for managing Pendulum BaaS projects - from local development to AWS production deployment.
 
-This is a command-line interface for managing Pendulum BaaS projects.
+## Overview
+The Pendulum CLI provides a complete development and deployment workflow:
 
-## Useful Commands
+- Local Development - Docker Compose orchestration with hot reload
+- AWS Deployment - Infrastructure-as-Code using AWS CDK
+- Project Management - Initialize, build, and destroy Pendulum projects
 
+## Installation
+Install globally via npm:
+```bash
+npm install -g @pendulum-baas/cli
+```
+
+Or use directly with npx:
+```bash
+npx @pendulum-baas/cli <command>
+```
+
+## Commands
 `pendulum init`
-
 Initialize a new Pendulum project in the current directory.
-This command will:
+```bash
+npx pendulum init
+```
 
-- Clone the Pendulum backend code to a `pendulum` directory
-- Install backend dependencies
-- Create a root `package.json` with Pendulum scripts
+This will:
+
+- Install @pendulum-baas/core and @pendulum-baas/sdk
+- Add npm scripts for backend management
+- Set up project structure
 
 `pendulum dev`
+Start the Pendulum backend for local development.
+```bash
+npx pendulum dev
+```
 
-Start the Pendulum backend in development mode using Docker Compose.
-This command will:
+Starts:
 
-- Build and start the Pendulum backend containers
-- Make the API available at `http://localhost:3000`
-- Make the events service available at `http://localhost:8080/events`
+- MongoDB container
+- App service (port 3000)
+- Events service (port 8080)
+- Admin dashboard at http://localhost:3000/admin
 
 `pendulum deploy`
+Deploy your application to AWS using CDK.
+```bash
+npx pendulum deploy
+```
 
-Deploy the Pendulum backend to AWS using CDK.
-This command will:
+Interactive prompts for:
 
-- Prompt for AWS account ID and region
-- Validate AWS credentials
-- Bootstrap the CDK environment if needed
-- Deploy the Pendulum infrastructure to AWS
-- Provide deployment details and next steps
+- AWS account ID and region
+- Project name
+- Frontend build path
+- Deployment confirmation
+
+Creates:
+
+- ECS Fargate cluster
+- DocumentDB database
+- Application Load Balancer
+- CloudFront distribution
+- VPC with security groups
 
 `pendulum destroy`
-
-Permanently destroy the Pendulum deployment from AWS.
-This command will:
-
-- Prompt for AWS account ID and region
-- Check if Pendulum stack exists
-- Display warnings about permanent data loss
-- Require confirmation by typing "DESTROY"
-- Remove all AWS infrastructure and resources
-- Stop all related billing charges
-
-## Prerequisites
-
-## For `pendulum init` and `pendulum dev`:
-
-- Node.js (v18 or later)
-- Docker and Docker Compose
-- Git
-
-## For `pendulum deploy` and `pendulum destroy`:
-
-- All of the above, plus:
-- AWS CLI configured with appropriate credentials (`aws configure`)
-- Sufficient AWS permissions for CDK deployment
-- Docker (required for CDK asset building)
-
-## Usage
-
+Remove all AWS infrastructure and resources.
 ```bash
-# Initialize a new project
-pendulum init
+npx pendulum destroy
+```
 
-# Start development server
-pendulum dev
+Warning: This permanently deletes all data and infrastructure.
 
-# Deploy to AWS
-pendulum deploy
+# Prerequisites
+## For Local Development
 
-# Destroy AWS deployment
-pendulum destroy
+- Node.js 18+
+- Docker and Docker Compose
+- npm or yarn
+
+# For AWS Deployment
+
+- AWS CLI configured (`aws configure`)
+- Docker (for container building)
+- Valid AWS credentials with appropriate permissions
+
+# AWS Permissions Required
+Your AWS user/role needs permissions for:
+
+- CloudFormation (full access)
+- ECS (full access)
+- DocumentDB (full access)
+- VPC/EC2 (networking)
+- IAM (role creation)
+- S3 (CDK assets)
+- Secrets Manager (credentials)
+
+## Project Structure
+After running `pendulum init`:
+your-project/
+├── package.json                # Updated with Pendulum scripts
+├── node_modules/
+│   ├── @pendulum-baas/core/    # Backend services
+│   └── @pendulum-baas/sdk/     # Client library
+└── .env                        # Optional environment config
+
+# Environment Variables
+## Local Development (.env in your project root directory)
+```env
+MONGO_URL=mongodb://localhost:27017
+DB_NAME=your_app_name
+JWT_SECRET=your_secret_key
+PORT=3000
+NODE_ENV=development
 ```
 
 ## AWS Deployment
+Environment variables are automatically managed via:
 
-The `pendulum deploy` command uses AWS CDK to provision:
+- AWS Secrets Manager (database credentials, JWT secrets)
+- ECS task definitions (service configuration)
+- CDK stack parameters (infrastructure settings)
 
-- ECS Fargate cluster for containerized services
-- Application Load Balancer for traffic distribution
-- DocumentDB cluster for data persistence
-- VPC with public/private subnets
-- Security groups and IAM roles
-- ECR repositories for container images
+## Management Scripts
+Added to your package.json by pendulum init:
+```json
+{
+  "scripts": {
+    "pendulum-backend:start": "cd node_modules/@pendulum-baas/core && docker compose start",
+    "pendulum-backend:stop": "cd node_modules/@pendulum-baas/core && docker compose stop"
+  }
+}
+```
 
-Make sure you have the necessary AWS permissions for these services before deploying.
+## AWS Infrastructure
+The CLI deploys a complete stack:
+┌─────────────────┐    ┌─────────────────┐
+│   CloudFront    │    │       ALB       │
+│  (Frontend CDN) │    │ (Load Balancer) │
+└─────────────────┘    └─────────────────┘
+                                │
+                        ┌─────────────────┐
+                        │   ECS Cluster   │
+                        │ ┌─────┐ ┌─────┐ │
+                        │ │ App │ │Event│ │
+                        │ └─────┘ └─────┘ │
+                        └─────────────────┘
+                                │
+                        ┌─────────────────┐
+                        │   DocumentDB    │
+                        │    Cluster      │
+                        └─────────────────┘
 
-## Important Notes
+## Output Information
+After successful deployment, you'll receive:
 
-- Data Loss Warning: The destroy command permanently deletes all data and resources. This action cannot be undone.
-- Billing: AWS resources created by deploy will incur charges. Use destroy to stop billing.
-- CDK Bootstrap: The destroy command preserves CDK bootstrap resources for future deployments.
+- Frontend URL - CloudFront distribution
+- API Endpoint - Load balancer DNS
+- Admin Dashboard - Management interface
+- Admin API Key - Dashboard access credentials
+
+# Troubleshooting
+## Common Issues
+Docker not running:
+```bash
+# Start Docker service
+sudo systemctl start docker  # Linux
+# Or start Docker Desktop on macOS/Windows
+```
+
+AWS credentials not configured:
+```bash
+aws configure
+# Enter your Access Key ID, Secret, region, and output format
+```
+
+Build directory not found:
+
+- Ensure your frontend is built (`npm run build`)
+- Verify the build path contains `index.html`
+
+## Dependencies
+
+- AWS CDK - Infrastructure as Code
+- AWS CLI - AWS resource management
+- Docker - Container orchestration
+- Inquirer - Interactive prompts
+- Chalk - Terminal colors
+- Ora - Loading spinners
+
+# Examples
+## Complete Workflow
+```bash
+# Initialize project
+mkdir my-app && cd my-app
+npx pendulum init
+
+# Start development
+npx pendulum dev
+
+# Deploy to production
+npx pendulum deploy
+
+# Clean up resources
+npx pendulum destroy
+```
+
+# Frontend Integration
+```typescript
+import { PendulumClient } from '@pendulum-baas/sdk';
+
+const client = new PendulumClient({
+  apiUrl: process.env.NODE_ENV === 'production' 
+    ? 'https://your-deployed-api.com'
+    : 'http://localhost:3000'
+});
+```
