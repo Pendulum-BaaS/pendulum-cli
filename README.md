@@ -1,12 +1,14 @@
 # Pendulum CLI
 Command-line interface for managing Pendulum BaaS projects - from local development to AWS production deployment.
 
-## Overview
-The Pendulum CLI provides a complete development and deployment workflow:
+The Pendulum CLI automates your entire development workflow, from zero to production. With just a few commands, you can initialize projects, develop locally with hot reload, and deploy complete AWS infrastructure.
 
-- Local Development - Docker Compose orchestration with hot reload
-- AWS Deployment - Infrastructure-as-Code using AWS CDK
-- Project Management - Initialize, build, and destroy Pendulum projects
+### Key Benefits:
+- One-command setup - Get a full backend running locally in seconds
+- Infrastructure automation - Deploy to AWS with zero configuration
+- Development optimized - Hot reload and live logs during development
+- Production ready - Auto-provisioned ECS, DocumentDB, and load balancers
+- Clean teardown - Remove all AWS resources with a single command
 
 ## Installation
 Install globally via npm:
@@ -20,10 +22,8 @@ npx @pendulum-baas/cli <command>
 ```
 
 ## Commands
-`pendulum init`
-Initialize a new Pendulum project in the current directory.
 ```bash
-npx pendulum init
+npx pendulum init # Initialize a new Pendulum project in the current directory.
 ```
 
 This will:
@@ -32,10 +32,10 @@ This will:
 - Add npm scripts for backend management
 - Set up project structure
 
-`pendulum dev`
-Start the Pendulum backend for local development.
+***
+
 ```bash
-npx pendulum dev
+npx pendulum dev # Start the Pendulum backend for local development.
 ```
 
 Starts:
@@ -45,10 +45,10 @@ Starts:
 - Events service (port 8080)
 - Admin dashboard at http://localhost:3000/admin
 
-`pendulum deploy`
-Deploy your application to AWS using CDK.
+***
+
 ```bash
-npx pendulum deploy
+npx pendulum deploy # Deploy your application to AWS using CDK.
 ```
 
 Interactive prompts for:
@@ -66,57 +66,56 @@ Creates:
 - CloudFront distribution
 - VPC with security groups
 
-`pendulum destroy`
-Remove all AWS infrastructure and resources.
+***
+
 ```bash
-npx pendulum destroy
+npx pendulum destroy # Remove all AWS infrastructure and resources.
 ```
 
-Warning: This permanently deletes all data and infrastructure.
+⚠️ **Warning**: This permanently deletes all data and infrastructure.
 
-# Prerequisites
-## For Local Development
+## Prerequisites
+### For Local Development
 
 - Node.js 18+
 - Docker and Docker Compose
 - npm or yarn
 
-# For AWS Deployment
+### For AWS Deployment
 
 - AWS CLI configured (`aws configure`)
 - Docker (for container building)
 - Valid AWS credentials with appropriate permissions
 
-# AWS Permissions Required
-Your AWS user/role needs permissions for:
+## AWS Permissions Setup
 
-- CloudFormation (full access)
-- ECS (full access)
-- DocumentDB (full access)
-- VPC/EC2 (networking)
-- IAM (role creation)
-- S3 (CDK assets)
-- Secrets Manager (credentials)
+**Important:** You must configure AWS permissions before deploying. The CLI cannot automatically grant itself permissions.
 
-# Environment Variables
-## Local Development (.env in your project root directory)
-```env
-MONGO_URL=mongodb://localhost:27017
-DB_NAME=your_app_name
-JWT_SECRET=your_secret_key
-PORT=3000
-NODE_ENV=development
+### Option 1: Administrator Access (Recommended)
+```bash
+aws configure
+# Enter your admin credentials
 ```
 
-## AWS Deployment
-Environment variables are automatically managed via:
+### Option 2: Limited IAM User
+- `AWSCloudFormationFullAccess` - Stack management
+- `AmazonECS_FullAccess` - Container orchestration
+- `AmazonDocDBFullAccess` - Database hosting
+- `AmazonVPCFullAccess` - Network infrastructure
+- `IAMFullAccess` - Role creation
+- `AmazonS3FullAccess` - CDK asset storage
+- `SecretsManagerReadWrite` - Credential management
 
-- AWS Secrets Manager (database credentials, JWT secrets)
-- ECS task definitions (service configuration)
-- CDK stack parameters (infrastructure settings)
+### Verify Setup
+```bash
+aws sts get-caller-identity
+# Should show your account ID and user/role
+```
+## Environment Configuration
+See the Pendulum Core README for environment variable details. The CLI handles configuration automatically.
 
-## Management Scripts
-Added to your package.json by pendulum init:
+## Docker Management
+The CLI adds these scripts to your `package.json`:
 ```json
 {
   "scripts": {
@@ -126,35 +125,40 @@ Added to your package.json by pendulum init:
 }
 ```
 
-## Output Information
-After successful deployment, you'll receive:
+## Deployment Output
+After successful AWS deployment, you'll receive:
 
-- Frontend URL - CloudFront distribution
-- API Endpoint - Load balancer DNS
-- Admin Dashboard - Management interface
-- Admin API Key - Dashboard access credentials
+- **Frontend URL** - CloudFront distribution
+- **API Endpoint** - Load balancer DNS
+- **Admin Dashboard** - Management interface
+- **Admin API Key** - Dashboard access credentials
 
-# Troubleshooting
-## Common Issues
-Docker not running:
+## Troubleshooting
+### Docker not running:
 ```bash
-# Start Docker service
-sudo systemctl start docker  # Linux
-# Or start Docker Desktop on macOS/Windows
+# Linux
+sudo systemctl start docker
+
+# macOS/Windows  
+# Start Docker Desktop application
 ```
 
-AWS credentials not configured:
+### AWS credentials not configured:
 ```bash
 aws configure
 # Enter your Access Key ID, Secret, region, and output format
 ```
 
-Build directory not found:
-
+### Build directory not found:
+- Check the build path when prompted during deployment
 - Ensure your frontend is built (`npm run build`)
 - Verify the build path contains `index.html`
 
-## Dependencies
+### Permission errors:
+- Verify your AWS user has the required permissions listed above
+- Check AWS CLI access: `aws sts get-caller-identity`
+
+## Dependencies Downloaded with `npm install`
 
 - AWS CDK - Infrastructure as Code
 - AWS CLI - AWS resource management
@@ -163,8 +167,8 @@ Build directory not found:
 - Chalk - Terminal colors
 - Ora - Loading spinners
 
-# Examples
-## Complete Workflow
+## Examples
+### Complete Workflow
 ```bash
 # Initialize project
 mkdir my-app && cd my-app
@@ -178,15 +182,4 @@ npx pendulum deploy
 
 # Clean up resources
 npx pendulum destroy
-```
-
-# Frontend Integration
-```typescript
-import { PendulumClient } from '@pendulum-baas/sdk';
-
-const client = new PendulumClient({
-  apiUrl: process.env.NODE_ENV === 'production' 
-    ? 'https://your-deployed-api.com'
-    : 'http://localhost:3000'
-});
 ```
