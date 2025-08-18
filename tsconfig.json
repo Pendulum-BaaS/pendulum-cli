@@ -23,7 +23,8 @@
     "inlineSources": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
-    "typeRoots": ["./node_modules/@types"]
+    "typeRoots": ["./node_modules/@types"],
+    "isolatedModules": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "cdk.out"]
