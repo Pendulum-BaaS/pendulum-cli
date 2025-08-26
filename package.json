@@ -1,6 +1,7 @@
 {
   "name": "@pendulum-baas/cli",
   "version": "1.0.6",
+  "description": "Command-line interface for managing Pendulum BaaS projects - from local development to AWS production deployment",
   "main": "dist/index.js",
   "bin": {
     "pendulum": "dist/index.js"
@@ -23,6 +24,33 @@
     "deploy": "cdk deploy --all",
     "destroy": "cdk destroy --all",
     "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "baas",
+    "backend-as-a-service",
+    "cli",
+    "aws",
+    "deployment",
+    "infrastructure",
+    "cdk",
+    "pendulum",
+    "development",
+    "mongodb",
+    "real-time",
+    "reactive"
+  ],
+  "author": "Pendulum Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Pendulum-BaaS/pendulum-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Pendulum-BaaS/pendulum-cli/issues"
+  },
+  "homepage": "https://github.com/Pendulum-BaaS/pendulum-cli#readme",
+  "engines": {
+    "node": ">=18.0.0"
   },
   "devDependencies": {
     "@types/aws-sdk": "^0.0.42",
