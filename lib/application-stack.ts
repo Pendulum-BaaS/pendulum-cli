@@ -80,7 +80,7 @@ export class ApplicationStack extends cdk.Stack {
     // add app container
     const appContainer = appTaskDef.addContainer("AppContainer", {
       image: ecs.ContainerImage.fromRegistry(
-        "public.ecr.aws/f6o9b2p8/pendulum/core:app-latest",
+        "public.ecr.aws/m1y9r7r1/pendulum:app-latest",
       ),
       environment: {
         ...props.containerEnvironment,
@@ -138,7 +138,7 @@ export class ApplicationStack extends cdk.Stack {
     // add events container
     const eventsContainer = eventsTaskDef.addContainer("EventsContainer", {
       image: ecs.ContainerImage.fromRegistry(
-        "public.ecr.aws/f6o9b2p8/pendulum/core:events-latest"
+        "public.ecr.aws/m1y9r7r1/pendulum:events-latest"
       ),
       environment: {
         ...props.containerEnvironment,
